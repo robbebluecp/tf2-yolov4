@@ -1,0 +1,5 @@
+classes= 20
+train  = /opt/voc2007/train.txt
+valid  = /opt/voc2007/valid.txt
+names = cfg/train_classes.names
+backup = backup
