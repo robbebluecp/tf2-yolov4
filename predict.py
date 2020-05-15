@@ -10,7 +10,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-m', '--model', type=str, help='input h5 model path', default='model_data/train_net_best.h5')
+parser.add_argument('-m', '--model', type=str, help='input h5 model path', default='model_train/yolov4.h5')
 parser.add_argument('-i', '--image', type=str, help='input image file path', default='data/test2.png')
 
 

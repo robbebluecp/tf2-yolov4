@@ -130,3 +130,4 @@ dmypy.json
 logs/
 *.iml
 *.xml
+model_train/

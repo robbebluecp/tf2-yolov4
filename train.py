@@ -29,9 +29,6 @@ from tensorflow.keras import Model
 from generator import data_generator
 from tensorflow.keras.callbacks import *
 
-log_dir = 'logs/'
-
-
 
 anchors = config.anchors
 class_names = config.classes_names
@@ -61,9 +58,12 @@ model_loss = Lambda(function=loss.yolo4_loss,
                     arguments={'anchors': anchors, 'num_classes': num_classes, 'ignore_thresh': 0.5, 'use_diou_loss': True,
                                })([*model_yolo.output, *y_true])
 
-logging = TensorBoard(log_dir=log_dir)
-checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
-                             monitor='val_loss', save_weights_only=True, save_best_only=True, period=1)
+logging = TensorBoard()
+checkpoint = ModelCheckpoint(filepath='model_train/ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
+                             monitor='val_loss',
+                             save_weights_only=True,
+                             save_best_only=True,
+                             period=1)
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, verbose=1)
 early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1)
 

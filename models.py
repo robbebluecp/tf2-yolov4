@@ -29,10 +29,10 @@ class Mish(keras.layers.Layer):
 
 
 class YOLO:
-    def __init__(self, pre_train=''):
+    def __init__(self, input_shape=(None, None), pre_train=''):
         self.num_classes = config.num_classes
         self.num_anchors = config.num_anchors
-        self.inputs = keras.layers.Input((None, None, 3))
+        self.inputs = keras.layers.Input((*input_shape, 3))
         self.darknet = self.get_darknet()
         self.darknet_model = keras.models.Model(self.inputs, self.darknet)
         self.y1 = self.darknet_model.layers[-1].output

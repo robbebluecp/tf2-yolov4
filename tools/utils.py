@@ -91,11 +91,29 @@ def iou_cors_index(boxes, anchors):
     return iou
 
 
+# def tf_layer_name_compat(layer_v1_name):
+#     """
+#     layers' name are changed a lot from tf1 to tf2,
+#     and name_mapping will be filled when needed.
+#
+#     """
+#     tmp = layer_v1_name.split('_')
+#     num = tmp[-1]
+#     if layer_v1_name.startswith('input'):
+#         layer_v2_name = layer_v1_name
+#     else:
+#         try:
+#             num = int(num)
+#             layer_v2_name = '_'.join(tmp[:-1]) + '_' + str(num + 1)
+#         except:
+#             layer_v2_name = layer_v1_name + '_1'
+#
+#     return layer_v2_name
+
 def tf_layer_name_compat(layer_v1_name):
     """
     layers' name are changed a lot from tf1 to tf2,
     and name_mapping will be filled when needed.
-
     """
     name_mapping = {
         'batchnormalization': 'batch_normalization',
