@@ -3,9 +3,10 @@
 """
 
 from .utils import rand
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
+import cv2 as cv
 import config
 import colorsys
 
@@ -98,6 +99,25 @@ def resize_image(image, new_size):
     return new_image
 
 
+def resize_image_by_cv(image, new_size):
+    iw, ih = image.shape[1], image.shape[0]
+    w, h = new_size
+    scale = min(w / iw, h / ih)
+    nw = int(iw * scale)
+    nh = int(ih * scale)
+
+    image = cv.resize(image, (nw, nh), cv.INTER_CUBIC)
+
+    new_image = np.full((h, w, 3), 128)
+    h1 = (h - nh) // 2
+    h2 = (h + nh) // 2
+    w1 = (w - nw) // 2
+    w2 = (w + nw) // 2
+
+    new_image[h1:h2, w1:w2, :] = image
+    return new_image
+
+
 def get_random_colors(nums):
     hsv_tuples = [(x / nums, 1., 1.)
                   for x in range(nums)]
@@ -106,3 +126,59 @@ def get_random_colors(nums):
     return colors
 
 
+def draw_rectangle(image, boxes, scores, classes, class_names, colors, model='cv'):
+    if model == 'pillow':
+        image = Image.fromarray(image)
+        draw = ImageDraw.Draw(image)
+        image_shape = image.size[::-1]
+        thickness = (image.size[0] + image.size[1]) // 300
+        font = ImageFont.truetype(font=config.font_path, size=np.floor(3e-2 * image.size[1] + 0.5).astype('int32'))
+
+    else:
+        image_shape = image.shape
+        thickness = 2
+        font_scale = 1
+        font = cv.FONT_HERSHEY_SIMPLEX
+
+    for i, c in reversed(list(enumerate(classes))):
+        class_name = class_names[c]
+        score = scores[i]
+        label = '{} {:.2f}'.format(class_name, score)
+
+        top, left, bottom, right = boxes[i]
+        top = max(0, np.floor(top + 0.5).astype('int32'))
+        left = max(0, np.floor(left + 0.5).astype('int32'))
+        bottom = min(image_shape[0], np.floor(bottom + 0.5).astype('int32'))
+        right = min(image_shape[1], np.floor(right + 0.5).astype('int32'))
+
+        if model == 'cv':
+            label_size = cv.getTextSize(label, font, font_scale, thickness)
+            text_width, text_height = label_size[0]
+
+            if top - text_height >= 0:
+                text_origin = np.array([left, top])
+            else:
+                text_origin = np.array([left, top + text_height])
+
+            cv.rectangle(image, (left, top), (right, bottom), colors[c], thickness=2)
+            cv.rectangle(image, tuple(text_origin), (left + text_width, top - text_height), colors[c], thickness=-1)
+            cv.putText(image, label, tuple(text_origin), font, fontScale=font_scale, color=(0, 0, 0), thickness=2)
+
+        elif model == 'pillow':
+
+            label_size = draw.textsize(label, font)
+
+            if top - label_size[1] >= 0:
+                text_origin = np.array([left, top - label_size[1]])
+            else:
+                text_origin = np.array([left, top + 1])
+
+            for i in range(thickness):
+                draw.rectangle([left + i, top + i, right - i, bottom - i], outline=colors[c])
+            draw.rectangle([tuple(text_origin), tuple(text_origin + label_size)], fill=colors[c])
+            draw.text(text_origin, label, fill=(0, 0, 0), font=font)
+
+    if model == 'pillow':
+        image = np.array(image)
+
+    return image
