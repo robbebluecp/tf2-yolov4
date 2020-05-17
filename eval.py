@@ -1,6 +1,6 @@
 import tensorflow.keras.backend as K
 import tensorflow as tf
-from loss import yolo_head
+from models import YOLO
 import numpy as np
 
 
@@ -43,7 +43,7 @@ def yolo_correct_boxes(box_xy, box_wh, input_shape, image_shape):
 def yolo_boxes_and_scores(feats, anchors, num_classes, input_shape, image_shape):
     '''Process Conv layer output'''
     # (N, 13, 13, 3, 2), (N, 13, 13, 3, 2)， (N, 13, 13, 3, 1)， (N, 13, 13, 3, 10)
-    box_xy, box_wh, box_confidence, box_class_probs = yolo_head(feats, anchors, num_classes, input_shape)
+    box_xy, box_wh, box_confidence, box_class_probs = YOLO.yolo_head(feats, anchors, num_classes, input_shape)
     # (N, 13, 13, 3, 4)
     boxes = yolo_correct_boxes(box_xy, box_wh, input_shape, image_shape)
     # (x, 4)

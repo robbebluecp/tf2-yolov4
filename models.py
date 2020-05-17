@@ -188,49 +188,50 @@ class YOLO:
         # [x // 32, xx/ 16, xx/8]
         return o1, o2, o3
 
+    @staticmethod
+    def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
+        """
+
+        :param feats:           (N, 13, 13, 3 * (5+n_class)), ...
+        :param anchors:         (3, 2)
+        :param num_classes:     15
+        :param input_shape:     (416, 416)
+        :param calc_loss:
+        :return:
+        """
+        # 3
+        num_anchors = len(anchors)
+        # Reshape to batch, height, width, num_anchors, box_params.
+        # (1, 1, 1, 3, 2)
+        anchors_tensor = K.reshape(K.constant(anchors), [1, 1, 1, num_anchors, 2])
+        # (13, 13)
+        grid_shape = K.shape(feats)[1:3]  # height, width
+        #
+        grid_y = K.tile(K.reshape(K.arange(0, stop=grid_shape[0]), [-1, 1, 1, 1]),
+                        [1, grid_shape[1], 1, 1])
+        grid_x = K.tile(K.reshape(K.arange(0, stop=grid_shape[1]), [1, -1, 1, 1]),
+                        [grid_shape[0], 1, 1, 1])
+        grid = K.concatenate([grid_x, grid_y])
+        # (13, 13, 1, 2)
+        grid = K.cast(grid, K.floatx())
+
+        # (N, 13, 13, 3 * 15)
+        feats = K.reshape(feats, [-1, grid_shape[0], grid_shape[1], num_anchors, num_classes + 5])
+
+        box_xy = (K.sigmoid(feats[..., :2]) + grid) / K.cast(grid_shape[::-1], K.dtype(feats))
+        box_wh = K.exp(feats[..., 2:4]) * anchors_tensor / K.cast(input_shape[::-1], K.dtype(feats))
+        box_confidence = K.sigmoid(feats[..., 4:5])
+        box_class_probs = K.sigmoid(feats[..., 5:])
+
+        if calc_loss:
+            # (13, 13, 1, 2), (N, 13, 13, 3, 15), (N, 13, 13, 3, 2), (N, 13, 13, 3, 2)
+            return grid, feats, box_xy, box_wh
+        # (N, 13, 13, 3, 2), (N, 13, 13, 3, 2), (N, 13, 13, 3, 1), (N, 13, 13, 3, 10)
+        return box_xy, box_wh, box_confidence, box_class_probs
+
     def __call__(self, *args, **kwargs):
         return self.yolo
 
-
-def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
-    """
-
-    :param feats:           (N, 13, 13, 3 * (5+n_class)), ...
-    :param anchors:         (3, 2)
-    :param num_classes:     15
-    :param input_shape:     (416, 416)
-    :param calc_loss:
-    :return:
-    """
-    # 3
-    num_anchors = len(anchors)
-    # Reshape to batch, height, width, num_anchors, box_params.
-    # (1, 1, 1, 3, 2)
-    anchors_tensor = K.reshape(K.constant(anchors), [1, 1, 1, num_anchors, 2])
-    # (13, 13)
-    grid_shape = K.shape(feats)[1:3]  # height, width
-    #
-    grid_y = K.tile(K.reshape(K.arange(0, stop=grid_shape[0]), [-1, 1, 1, 1]),
-                    [1, grid_shape[1], 1, 1])
-    grid_x = K.tile(K.reshape(K.arange(0, stop=grid_shape[1]), [1, -1, 1, 1]),
-                    [grid_shape[0], 1, 1, 1])
-    grid = K.concatenate([grid_x, grid_y])
-    # (13, 13, 1, 2)
-    grid = K.cast(grid, K.floatx())
-
-    # (N, 13, 13, 3 * 15)
-    feats = K.reshape(feats, [-1, grid_shape[0], grid_shape[1], num_anchors, num_classes + 5])
-
-    box_xy = (K.sigmoid(feats[..., :2]) + grid) / K.cast(grid_shape[::-1], K.dtype(feats))
-    box_wh = K.exp(feats[..., 2:4]) * anchors_tensor / K.cast(input_shape[::-1], K.dtype(feats))
-    box_confidence = K.sigmoid(feats[..., 4:5])
-    box_class_probs = K.sigmoid(feats[..., 5:])
-
-    if calc_loss:
-        # (13, 13, 1, 2), (N, 13, 13, 3, 15), (N, 13, 13, 3, 2), (N, 13, 13, 3, 2)
-        return grid, feats, box_xy, box_wh
-    # (N, 13, 13, 3, 2), (N, 13, 13, 3, 2), (N, 13, 13, 3, 1), (N, 13, 13, 3, 10)
-    return box_xy, box_wh, box_confidence, box_class_probs
 
 
 def compose(*funcs):

@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 import config
 from tools import utils
-from models import yolo_head
+from models import YOLO
 
 
 def box_diou(b1, b2):
@@ -104,7 +104,7 @@ def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5, label_smoothing=0, 
         object_mask = y_true[l][..., 4:5]
         true_class_probs = y_true[l][..., 5:]
 
-        grid, raw_pred, pred_xy, pred_wh = yolo_head(y_pred_base[l],
+        grid, raw_pred, pred_xy, pred_wh = YOLO.yolo_head(y_pred_base[l],
                                                      anchors[config.anchor_mask[l]],
                                                      num_classes,
                                                      input_shape,
