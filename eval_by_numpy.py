@@ -39,7 +39,7 @@ def nms(boxes, scores, iou_threshold, max_boxes):
         inds = np.where(ovr <= iou_threshold)[0]
         # 将order序列更新，由于前面得到的矩形框索引要比矩形框在原order序列中的索引小1，所以要把这个1加回来
         order = order[inds + 1]
-        if len(index > max_boxes):
+        if len(index) > max_boxes:
             break
     return index
 
