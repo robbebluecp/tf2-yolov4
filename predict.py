@@ -5,7 +5,7 @@ import tensorflow.keras as keras
 import tensorflow as tf
 import cv2 as cv
 import numpy as np
-import eval_by_numpy
+import eval
 from models import Mish
 import argparse
 
@@ -49,7 +49,7 @@ new_image = np.expand_dims(new_image, 0)  # Add batch dimension.
 feats = model.predict(new_image)
 
 
-boxes, scores, classes = eval_by_numpy.yolo_eval(feats, anchors, len(class_names), (image.shape[0], image.shape[1]))
+boxes, scores, classes = eval.yolo_eval(feats, anchors, len(class_names), (image.shape[0], image.shape[1]))
 out_boxes, out_scores, out_classes = boxes[:5], scores[:5], classes[:5]
 
 
