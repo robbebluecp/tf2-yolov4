@@ -135,7 +135,6 @@ def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5, label_smoothing=0, 
         ignore_mask = ignore_mask.stack()
         ignore_mask = K.expand_dims(ignore_mask, -1)
 
-
         confidence_loss = object_mask * K.binary_crossentropy(object_mask, raw_pred[..., 4:5], from_logits=True) + \
                               (1 - object_mask) * K.binary_crossentropy(object_mask, raw_pred[..., 4:5],
                                                                         from_logits=True) * ignore_mask

@@ -22,6 +22,7 @@ from generator import data_generator
 class_mapping = dict(enumerate(config.classes_names))
 class_mapping = {class_mapping[key]: key for key in class_mapping}
 
+
 model_yolo = models.YOLO(pre_train='model_train/yolov4.h5')()
 
 f = open(config.label_path)
@@ -31,7 +32,7 @@ train_lines = label_lines[:-int(len(label_lines) * config.validation_split)]
 valid_lines = label_lines[-int(len(label_lines) * config.validation_split):]
 
 h, w = config.image_input_shape
-y_true = [keras.layers.Input(shape=(h // config.scale_size[l], w // config.scale_size[l], config.num_anchors // 3, config.num_classes + 5)) for l
+y_true = [keras.layers.Input(shape=(h // config.scale_size[l], w // config.scale_size[l], config.num_anchors, config.num_classes + 5)) for l
           in range(3)]
 
 model_loss = keras.layers.Lambda(function=loss.yolo4_loss,

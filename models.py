@@ -42,12 +42,14 @@ class YOLO:
         self.spp = self.get_spp()
         self.pan = self.get_pan()
         self.yolo = keras.models.Model(self.inputs, [*self.pan])
+        self.yolo.summary()
         if pre_train:
             print('loading pre-weights file ...')
-            self.yolo.load_weights(pre_train, by_name=True)
-            num = (250, len(self.yolo.layers) - 3)[1 - 1]
+            self.yolo.load_weights(pre_train, by_name=True, skip_mismatch=True)
+            num = (250, len(self.yolo.layers) - 3)[2 - 1]
             for i in range(num):
                 self.yolo.layers[i].trainable = False
+            print('loading finished')
 
 
     def conv_base_block(self, inputs, filters, kernel_size, strides=(1, 1), use_bias=True, name=None):
