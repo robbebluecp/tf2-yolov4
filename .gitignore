@@ -132,3 +132,5 @@ logs/
 *.xml
 *.lock
 model_data/labels.txt
+*.h5
+*.weights

@@ -41,10 +41,14 @@ class YOLO:
         self.y3 = self.darknet_model.layers[131].output
         self.spp = self.get_spp()
         self.pan = self.get_pan()
-        if not pre_train:
-            self.yolo = keras.models.Model(self.inputs, [*self.pan])
-        else:
-            pass
+        self.yolo = keras.models.Model(self.inputs, [*self.pan])
+        if pre_train:
+            print('loading pre-weights file ...')
+            self.yolo.load_weights(pre_train, by_name=True)
+            num = (250, len(self.yolo.layers) - 3)[1 - 1]
+            for i in range(num):
+                self.yolo.layers[i].trainable = False
+
 
     def conv_base_block(self, inputs, filters, kernel_size, strides=(1, 1), use_bias=True, name=None):
         """

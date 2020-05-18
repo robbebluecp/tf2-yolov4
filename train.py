@@ -22,7 +22,7 @@ from generator import data_generator
 class_mapping = dict(enumerate(config.classes_names))
 class_mapping = {class_mapping[key]: key for key in class_mapping}
 
-model_yolo = models.YOLO()()
+model_yolo = models.YOLO(pre_train='model_train/yolov4.h5')()
 
 f = open(config.label_path)
 label_lines = f.readlines()
@@ -54,7 +54,7 @@ reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, pa
 early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=20, verbose=1)
 
 model = keras.models.Model([model_yolo.input, *y_true], model_loss)
-model.compile(optimizer=keras.optimizers.Adam(1e-5), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+model.compile(optimizer=keras.optimizers.Adam(1e-4), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
 
 g_train = data_generator(label_lines=train_lines,
