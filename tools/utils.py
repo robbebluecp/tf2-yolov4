@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow.keras.backend as K
 
 def sigmoid(x):
+    # return K.sigmoid(x)
     return 1. / (1. + np.exp(-x))
 
 

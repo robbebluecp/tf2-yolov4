@@ -224,7 +224,7 @@ class YOLO:
 
         else:
             anchors_tensor = np.reshape(np.array(anchors), [1, 1, 1, num_anchors, 2])
-            grid_shape = np.array(feats.shape[1:3])  # height, width
+            grid_shape = np.asarray(feats.shape[1:3])  # height, width
             grid_y = np.tile(np.reshape(np.arange(0, stop=grid_shape[0]), [-1, 1, 1, 1]),
                              [1, grid_shape[1], 1, 1])
             grid_x = np.tile(np.reshape(np.arange(0, stop=grid_shape[1]), [1, -1, 1, 1]),
