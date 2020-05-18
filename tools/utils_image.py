@@ -182,3 +182,9 @@ def draw_rectangle(image, boxes, scores, classes, class_names, colors, model='cv
         image = np.array(image)
 
     return image
+
+
+class Augment:
+
+    def __init__(self):
+        pass
