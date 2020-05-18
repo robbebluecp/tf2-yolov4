@@ -84,6 +84,8 @@ def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5, label_smoothing=0, 
     total_location_loss = 0
     total_confidence_loss = 0
     total_class_loss = 0
+    loss = 0
+
 
     y_pred_base, y_true = args[:3], args[3:]
     # 3
@@ -94,7 +96,6 @@ def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5, label_smoothing=0, 
     input_shape = K.cast(K.shape(y_pred_base[0])[1:3] * 32, K.dtype(y_true[0]))
     # [(13, 13), (26, 26), (52, 52)]
     grid_shapes = [K.cast(K.shape(y_pred_base[l])[1:3], K.floatx()) for l in range(num_layers)]
-    loss = 0
     # N
     batch = K.shape(y_pred_base[0])[0]  # batch size, tensor
 
@@ -113,7 +114,7 @@ def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5, label_smoothing=0, 
 
         # Darknet raw box to calculate loss.
         raw_true_xy = y_true[l][..., :2] * grid_shapes[l][::-1] - grid
-        raw_true_wh = K.log(y_true[l][..., 2:4] / anchors[config.anchor_mask[l]] * input_shape[::-1] + 1e-7)
+        raw_true_wh = K.log(y_true[l][..., 2:4] / (anchors[config.anchor_mask[l]] * input_shape[::-1] + K.epsilon()))
         raw_true_wh = K.switch(object_mask, raw_true_wh, K.zeros_like(raw_true_wh))  # avoid log(0)=-inf
         box_loss_scale = 2 - y_true[l][..., 2:3] * y_true[l][..., 3:4]
 

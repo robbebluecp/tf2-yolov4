@@ -50,11 +50,11 @@ checkpoint = keras.callbacks.ModelCheckpoint(filepath='model_train/ep{epoch:03d}
                                              save_weights_only=False,
                                              save_best_only=True,
                                              period=1)
-reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1)
+reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, verbose=1)
 early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=20, verbose=1)
 
 model = keras.models.Model([model_yolo.input, *y_true], model_loss)
-model.compile(optimizer=keras.optimizers.Adam(1e-3), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+model.compile(optimizer=keras.optimizers.Adam(1e-5), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
 
 g_train = data_generator(label_lines=train_lines,
