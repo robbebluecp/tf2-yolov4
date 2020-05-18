@@ -70,7 +70,6 @@ early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, ver
 
 model = Model([model_yolo.input, *y_true], model_loss)
 model.compile(optimizer=Adam(1e-3), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
-model.fit
 model.fit_generator(generator=data_generator(label_lines=train_lines,
                                              batch_size=config.batch_size,
                                              input_shape=config.image_input_shape,
