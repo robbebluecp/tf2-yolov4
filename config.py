@@ -31,4 +31,4 @@ epochs = 1000
 score = 0.5
 iou = 0.5
 
-label_path = 'model_data/labels.txt'
+label_path = '/opt/voc2007/labels.txt'
