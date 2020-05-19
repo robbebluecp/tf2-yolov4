@@ -48,7 +48,7 @@ model_loss = keras.layers.Lambda(function=loss.yolo4_loss,
 tensorboard = keras.callbacks.TensorBoard()
 checkpoint = keras.callbacks.ModelCheckpoint(filepath='model_train/ep{epoch:03d}-loss{loss:.3f}-valloss{val_loss:.3f}.h5',
                                              monitor='val_loss',
-                                             save_weights_only=False,
+                                             save_weights_only=True,
                                              save_best_only=True,
                                              period=1)
 reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, verbose=1)

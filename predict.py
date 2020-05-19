@@ -2,11 +2,10 @@
 from tools import utils_image
 import config
 import tensorflow.keras as keras
-import tensorflow as tf
 import cv2 as cv
 import numpy as np
 import eval
-from models import Mish
+import models
 import argparse
 
 # devices = tf.config.experimental.list_physical_devices('GPU')
@@ -15,7 +14,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-m', '--model', type=str, help='input h5 model path', default='model_train/yolov4.h5')
+parser.add_argument('-m', '--model', type=str, help='input h5 model path', default='model_train/ep027-loss18.731-valloss19.110.h5')
 parser.add_argument('-i', '--image', type=str, help='input image file path', default='data/test2.png')
 
 
@@ -33,8 +32,9 @@ num_classes = len(class_names)
 class_mapping = dict(enumerate(class_names))
 colors = utils_image.get_random_colors(len(class_names))
 class_mapping = {class_mapping[key]: key for key in class_mapping}
-model = keras.models.load_model(model_file_path, custom_objects={"Mish": Mish})
-model.summary()
+model = models.YOLO()()
+model.load_weights('model_train/ep027-loss18.731-valloss19.110.h5')
+
 
 
 image = cv.imread(image_file_path)
