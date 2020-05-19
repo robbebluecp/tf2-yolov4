@@ -26,9 +26,9 @@ ignore_thresh = 0.5
 
 validation_split = 0.1
 batch_size = 8
-epochs = 10000
+epochs = 1000
 
 score = 0.5
 iou = 0.5
 
-label_path = 'model_data/labels.txt'
+label_path = '/opt/voc2007/labels.txt'

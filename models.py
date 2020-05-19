@@ -2,7 +2,8 @@ from tensorflow import keras
 import tensorflow.keras.backend as K
 from functools import reduce
 import config
-import tensorflow as tf
+import numpy as np
+from tools import utils
 
 
 
@@ -40,10 +41,16 @@ class YOLO:
         self.y3 = self.darknet_model.layers[131].output
         self.spp = self.get_spp()
         self.pan = self.get_pan()
-        if not pre_train:
-            self.yolo = keras.models.Model(self.inputs, [*self.pan])
-        else:
-            pass
+        self.yolo = keras.models.Model(self.inputs, [*self.pan])
+        self.yolo.summary()
+        if pre_train:
+            print('loading pre-weights file ...')
+            self.yolo.load_weights(pre_train, by_name=True, skip_mismatch=True)
+            num = (250, len(self.yolo.layers) - 3)[2 - 1]
+            for i in range(num):
+                self.yolo.layers[i].trainable = False
+            print('loading finished')
+
 
     def conv_base_block(self, inputs, filters, kernel_size, strides=(1, 1), use_bias=True, name=None):
         """
@@ -192,42 +199,49 @@ class YOLO:
     def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
         """
 
-        :param feats:           (N, 13, 13, 3 * (5+n_class)), ...
-        :param anchors:         (3, 2)
-        :param num_classes:     15
-        :param input_shape:     (416, 416)
-        :param calc_loss:
-        :return:
-        """
-        # 3
+            :param feats:           (N, 13, 13, 3 * (5+n_class)), ...
+            :param anchors:         (3, 2)
+            :param num_classes:     15
+            :param input_shape:     (416, 416)
+            :param calc_loss:
+            :return:
+            """
+
         num_anchors = len(anchors)
         # Reshape to batch, height, width, num_anchors, box_params.
-        # (1, 1, 1, 3, 2)
-        anchors_tensor = K.reshape(K.constant(anchors), [1, 1, 1, num_anchors, 2])
-        # (13, 13)
-        grid_shape = K.shape(feats)[1:3]  # height, width
-        #
-        grid_y = K.tile(K.reshape(K.arange(0, stop=grid_shape[0]), [-1, 1, 1, 1]),
-                        [1, grid_shape[1], 1, 1])
-        grid_x = K.tile(K.reshape(K.arange(0, stop=grid_shape[1]), [1, -1, 1, 1]),
-                        [grid_shape[0], 1, 1, 1])
-        grid = K.concatenate([grid_x, grid_y])
-        # (13, 13, 1, 2)
-        grid = K.cast(grid, K.floatx())
-
-        # (N, 13, 13, 3 * 15)
-        feats = K.reshape(feats, [-1, grid_shape[0], grid_shape[1], num_anchors, num_classes + 5])
-
-        box_xy = (K.sigmoid(feats[..., :2]) + grid) / K.cast(grid_shape[::-1], K.dtype(feats))
-        box_wh = K.exp(feats[..., 2:4]) * anchors_tensor / K.cast(input_shape[::-1], K.dtype(feats))
-        box_confidence = K.sigmoid(feats[..., 4:5])
-        box_class_probs = K.sigmoid(feats[..., 5:])
 
         if calc_loss:
-            # (13, 13, 1, 2), (N, 13, 13, 3, 15), (N, 13, 13, 3, 2), (N, 13, 13, 3, 2)
+            anchors_tensor = K.reshape(K.constant(anchors), [1, 1, 1, num_anchors, 2])
+            grid_shape = K.shape(feats)[1:3]  # height, width
+            grid_y = K.tile(K.reshape(K.arange(0, stop=grid_shape[0]), [-1, 1, 1, 1]),
+                            [1, grid_shape[1], 1, 1])
+            grid_x = K.tile(K.reshape(K.arange(0, stop=grid_shape[1]), [1, -1, 1, 1]),
+                            [grid_shape[0], 1, 1, 1])
+            grid = K.concatenate([grid_x, grid_y])
+            grid = K.cast(grid, K.floatx())
+            feats = K.reshape(feats, [-1, grid_shape[0], grid_shape[1], num_anchors, num_classes + 5])
+            box_xy = (K.sigmoid(feats[..., :2]) + grid) / K.cast(grid_shape[::-1], K.dtype(feats))
+            box_wh = K.exp(feats[..., 2:4]) * anchors_tensor / K.cast(input_shape[::-1], K.dtype(feats))
             return grid, feats, box_xy, box_wh
-        # (N, 13, 13, 3, 2), (N, 13, 13, 3, 2), (N, 13, 13, 3, 1), (N, 13, 13, 3, 10)
+
+        else:
+            anchors_tensor = np.reshape(np.array(anchors), [1, 1, 1, num_anchors, 2])
+            grid_shape = np.asarray(feats.shape[1:3])  # height, width
+            grid_y = np.tile(np.reshape(np.arange(0, stop=grid_shape[0]), [-1, 1, 1, 1]),
+                             [1, grid_shape[1], 1, 1])
+            grid_x = np.tile(np.reshape(np.arange(0, stop=grid_shape[1]), [1, -1, 1, 1]),
+                             [grid_shape[0], 1, 1, 1])
+            grid = np.concatenate([grid_x, grid_y], axis=-1)
+            grid = grid.astype(feats.dtype)
+
+            feats = np.reshape(feats, [-1, grid_shape[0], grid_shape[1], num_anchors, num_classes + 5])
+
+            box_xy = (utils.sigmoid(feats[..., :2]) + grid) / grid_shape[..., ::-1].astype(feats.dtype)
+            box_wh = np.exp(feats[..., 2:4]) * anchors_tensor / input_shape[..., ::-1].astype(feats.dtype)
+            box_confidence = utils.sigmoid(feats[..., 4:5])
+            box_class_probs = utils.sigmoid(feats[..., 5:])
         return box_xy, box_wh, box_confidence, box_class_probs
+
 
     def __call__(self, *args, **kwargs):
         return self.yolo
