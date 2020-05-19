@@ -253,7 +253,7 @@ class Augment:
                     new_y2 = height - y1
                     new_x1 = x1
                     new_x2 = x2
-                elif kwargs.get('flip_code', -1) == 0:
+                elif kwargs.get('flip_code', -1) == -1:
                     new_x1 = width - x2
                     new_x2 = width - x1
                     new_y1 = height - y2
