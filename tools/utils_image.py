@@ -404,7 +404,7 @@ class Augment:
                     for j in range(0, w__ - kernel_size, kernel_size):
                         color = sub_box_image[i + kernel_size][j].tolist()
                         sub_box_image = cv.rectangle(sub_box_image, (j, i), (j + kernel_size - 1, i + kernel_size - 1), color, -1)
-                sub_box_image = cv.rectangle(sub_box_image, (0, 0), (w__-1, h__-1), (0, 250, 0))
+                # sub_box_image = cv.rectangle(sub_box_image, (0, 0), (w__-1, h__-1), (0, 250, 0))
                 box_image[starty: endy, startx: endx, :] = sub_box_image
             img[y1:y2, x1:x2, :] = box_image
         return img, boxes
@@ -414,4 +414,19 @@ class Augment:
         pass
 
 
+    @staticmethod
+    def resize(img: np.ndarray,
+               boxes: list or np.ndarray = None,
+               new_shape=(608, 608)
+               ):
+
+        h, w = img.shape[:2]
+        ratio_x, ratio_y = np.random.randint(50, 150) / 100.0, np.random.randint(50, 150) / 100.0
+        ratio_x, ratio_y = 0.6, 0.5
+        nh, nw = np.round(h * ratio_y).astype(int), np.round(w * ratio_x).astype(int)
+        new_image = cv.resize(img, (nw, nh), interpolation=cv.INTER_CUBIC)
+
+        cv.imshow('', new_image)
+        cv.waitKey()
+        cv.destroyAllWindows()
 
