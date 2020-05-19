@@ -1,7 +1,5 @@
-
 from tools import utils_image
 import config
-import tensorflow.keras as keras
 import cv2 as cv
 import numpy as np
 import eval
@@ -15,7 +13,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-m', '--model', type=str, help='input h5 model path', default='model_train/ep027-loss18.731-valloss19.110.h5')
-parser.add_argument('-i', '--image', type=str, help='input image file path', default='data/test2.png')
+parser.add_argument('-i', '--image', type=str, help='input image file path', default='data/test3.png')
 
 
 args = parser.parse_args()

@@ -1,7 +1,22 @@
+import cv2 as cv
+from tools.utils_image import Augment
 
-import models
+
+img_path = '/Users/robbe/others/tf_data/voc2007/images/000030.jpg'
+img = cv.imread(img_path)
+boxes = [[36, 205, 180, 289], [51, 160, 150, 292], [295, 138, 450, 290]]
+a = Augment()
+#
+new_image, new_boxes = a.mosaic(img, boxes)
+cv.imshow('', new_image)
+cv.waitKey()
+cv.destroyAllWindows()
 
 
-model = models.YOLO()()
-# a = (250, len(model.layers) - 3)[2 - 1]
-print(len(model.layers))
+# for box in new_boxes:
+#     x1, y1, x2, y2 = box
+#     new_image = cv.rectangle(new_image, (x1, y1), (x2, y2), (0, 250, 0))
+# cv.imshow('', new_image)
+# cv.waitKey()
+# cv.destroyAllWindows()
+
