@@ -252,9 +252,27 @@ class Augment:
                     new_y2 = height - y1
                     new_x1 = x1
                     new_x2 = x2
+                elif kwargs.get('flip_code', -1) == -1:
+                    new_x1 = width - x2
+                    new_x2 = width - x1
+                    new_y1 = height - y2
+                    new_y2 = height - y1
                 result.append([new_x1, new_y1, new_x2, new_y2])
 
-        return result
+            elif aug_type == 'resize':
+                new_h, new_w = kwargs.get('new_h'), kwargs.get('new_w')
+                bg_h, bg_w = kwargs.get('bg_h'), kwargs.get('bg_w')
+
+                dh = (new_h - bg_h) // 2
+                dw = (new_w - bg_w) // 2
+                if new_h <= bg_h and new_w <= bg_w:
+                    new_x1 = dw + x1
+                    new_x2 = dw + x2
+                    new_y1 = dh + y1
+                    new_y2 = dh + y2
+                result.append([new_x1, new_y1, new_x2, new_y2])
+
+        return np.asarray(result, dtype=int)
 
     @staticmethod
     def rotate(img: np.ndarray,
@@ -398,7 +416,6 @@ class Augment:
                     for j in range(0, w__ - kernel_size, kernel_size):
                         color = sub_box_image[i + kernel_size][j].tolist()
                         sub_box_image = cv.rectangle(sub_box_image, (j, i), (j + kernel_size - 1, i + kernel_size - 1), color, -1)
-                # sub_box_image = cv.rectangle(sub_box_image, (0, 0), (w__-1, h__-1), (0, 250, 0))
                 box_image[starty: endy, startx: endx, :] = sub_box_image
             img[y1:y2, x1:x2, :] = box_image
         return img, boxes
@@ -416,11 +433,23 @@ class Augment:
 
         h, w = img.shape[:2]
         ratio_x, ratio_y = np.random.randint(50, 150) / 100.0, np.random.randint(50, 150) / 100.0
-        ratio_x, ratio_y = 0.6, 0.5
-        nh, nw = np.round(h * ratio_y).astype(int), np.round(w * ratio_x).astype(int)
-        new_image = cv.resize(img, (nw, nh), interpolation=cv.INTER_CUBIC)
+        ratio_x, ratio_y = .5, .5
+        new_h, new_w = np.round(h * ratio_y).astype(int), np.round(w * ratio_x).astype(int)
+        new_image = cv.resize(img, (new_w, new_h), interpolation=cv.INTER_CUBIC)
+        bg_h, bg_w = new_shape
+        bg_image = np.ones(shape=(bg_h, bg_w, 3), dtype=new_image.dtype)
+        dh = (new_h - bg_h) // 2
+        dw = (new_w - bg_w) // 2
 
-        cv.imshow('', new_image)
-        cv.waitKey()
-        cv.destroyAllWindows()
+        if new_h <= bg_h and new_w <= bg_w:
+            bg_image[-dh:bg_h+dh, -dw:bg_w+dw, :] = new_image
+        elif new_h > bg_h:
+            bg_image = new_image[dh:new_h-dh, ...]
+        else:
+            bg_image = new_image[:, dw:new_w-dw, :]
+        if not boxes:
+            return bg_image
+        new_boxes = Augment.correct_boxes(h, w, boxes, 'resize', new_h=new_h, new_w=new_w, bg_w=bg_w, bg_h=bg_h)
+        return bg_image, new_boxes
+
 
