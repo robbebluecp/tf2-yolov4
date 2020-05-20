@@ -102,7 +102,7 @@ def data_generator(label_lines, batch_size, input_shape, anchors, num_classes):
             cors = np.array([np.array(list(map(int, box.split(',')))) for box in cors])
 
             # Augment
-            new_image, new_box = utils_image.augument(image_file_path, cors)
+            new_image, new_box = utils_image.Augment(img_path=image_file_path, boxes=cors)()
 
             image_data.append(new_image)
             box_data.append(new_box)
