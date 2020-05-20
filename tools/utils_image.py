@@ -127,8 +127,8 @@ def get_random_colors(nums):
     return colors
 
 
-def draw_rectangle(image, boxes, scores, classes, class_names, colors, model='cv'):
-    if model == 'pillow':
+def draw_rectangle(image, boxes, scores, classes, class_names, colors, mode='cv'):
+    if mode == 'pillow':
         image = Image.fromarray(image)
         draw = ImageDraw.Draw(image)
         image_shape = image.size[::-1]
@@ -151,8 +151,9 @@ def draw_rectangle(image, boxes, scores, classes, class_names, colors, model='cv
         left = max(0, np.floor(left + 0.5).astype('int32'))
         bottom = min(image_shape[0], np.floor(bottom + 0.5).astype('int32'))
         right = min(image_shape[1], np.floor(right + 0.5).astype('int32'))
+        print(c, label, 'x:{} y:{} x:{} y:{}'.format(left, top, right, bottom ))
 
-        if model == 'cv':
+        if mode == 'cv':
             label_size = cv.getTextSize(label, font, font_scale, thickness)
             text_width, text_height = label_size[0]
 
@@ -165,7 +166,7 @@ def draw_rectangle(image, boxes, scores, classes, class_names, colors, model='cv
             cv.rectangle(image, tuple(text_origin), (left + text_width, top - text_height), colors[c], thickness=-1)
             cv.putText(image, label, tuple(text_origin), font, fontScale=font_scale, color=(0, 0, 0), thickness=2)
 
-        elif model == 'pillow':
+        elif mode == 'pillow':
 
             label_size = draw.textsize(label, font)
 
@@ -179,7 +180,7 @@ def draw_rectangle(image, boxes, scores, classes, class_names, colors, model='cv
             draw.rectangle([tuple(text_origin), tuple(text_origin + label_size)], fill=colors[c])
             draw.text(text_origin, label, fill=(0, 0, 0), font=font)
 
-    if model == 'pillow':
+    if mode == 'pillow':
         image = np.array(image)
 
     return image

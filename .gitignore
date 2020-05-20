@@ -130,7 +130,12 @@ dmypy.json
 logs/
 *.iml
 *.xml
+<<<<<<< HEAD
+model_train/
+test_lib/
+=======
 *.lock
 model_data/labels.txt
 *.h5
 *.weights
+>>>>>>> 4cde4935308d6707e394bf3dbaca6c44ab5db5e9
