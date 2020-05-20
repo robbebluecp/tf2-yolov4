@@ -151,7 +151,7 @@ def draw_rectangle(image, boxes, scores, classes, class_names, colors, mode='cv'
         left = max(0, np.floor(left + 0.5).astype('int32'))
         bottom = min(image_shape[0], np.floor(bottom + 0.5).astype('int32'))
         right = min(image_shape[1], np.floor(right + 0.5).astype('int32'))
-        print(c, label, 'x:{} y:{} x:{} y:{}'.format(left, top, right, bottom ))
+        print(c, label, 'x:{} y:{} x:{} y:{}'.format(left, top, right, bottom))
 
         if mode == 'cv':
             label_size = cv.getTextSize(label, font, font_scale, thickness)
@@ -209,6 +209,10 @@ class Augment:
         h0 = (height - 0.5) / 2.0
         for box in boxes:
             x1, y1, x2, y2 = box
+            rela_x0 = (x1 + x2) / float(width) / 2
+            rela_y0 = (y1 + y2) / float(height) / 2
+            rela_w0 = np.abs(x1 - x2) / float(width)
+            rela_h0 = np.abs(y1 - y2) / float(height)
 
             if aug_type == 'rotate':
                 '''
@@ -220,7 +224,6 @@ class Augment:
 
                 angel = kwargs.get('angel', 0)
                 angel = angel * 2 * np.pi / 360
-
 
                 fxy = lambda x, y: [(x - w0) * np.cos(angel) - (-y - -h0) * np.sin(angel) + w0,
                                     -((x - w0) * np.sin(angel) + (-y - -h0) * np.cos(angel) + -h0)]
@@ -264,13 +267,43 @@ class Augment:
                 new_h, new_w = kwargs.get('new_h'), kwargs.get('new_w')
                 bg_h, bg_w = kwargs.get('bg_h'), kwargs.get('bg_w')
 
-                dh = (new_h - bg_h) // 2
-                dw = (new_w - bg_w) // 2
-                if new_h <= bg_h and new_w <= bg_w:
-                    new_x1 = dw + x1
-                    new_x2 = dw + x2
-                    new_y1 = dh + y1
-                    new_y2 = dh + y2
+                dh = (bg_h - new_h) / 2.0
+                dw = (bg_w - new_w) / 2.0
+
+                abs_new_x0 = new_w * rela_x0
+                abs_new_y0 = new_h * rela_y0
+                abs_new_w0 = new_w * rela_w0
+                abs_new_h0 = new_h * rela_h0
+
+                if dh >= 0 and dw >= 0:
+                    new_x1 = abs_new_x0 - abs_new_w0 / 2.0 + dw
+                    new_x2 = abs_new_x0 + abs_new_w0 / 2.0 + dw
+                    new_y1 = abs_new_y0 - abs_new_h0 / 2.0 + dh
+                    new_y2 = abs_new_y0 + abs_new_h0 / 2.0 + dh
+
+                elif dh < 0 and dw >= 0:
+                    new_x1 = abs_new_x0 - abs_new_w0 / 2.0 + dw
+                    new_x2 = abs_new_x0 + abs_new_w0 / 2.0 + dw
+                    new_y1 = abs_new_y0 + dh - abs_new_h0 / 2.0
+                    new_y2 = new_y1 + abs_new_h0
+
+                elif dh >= 0 and dw < 0:
+                    new_x1 = abs_new_x0 + dw - abs_new_w0 / 2.0
+                    new_x2 = new_x1 + abs_new_w0
+                    new_y1 = abs_new_y0 - abs_new_h0 / 2.0 + dh
+                    new_y2 = abs_new_y0 + abs_new_h0 / 2.0 + dh
+
+                else:
+                    new_x1 = abs_new_x0 + dw - abs_new_w0 / 2.0
+                    new_x2 = new_x1 + abs_new_w0
+                    new_y1 = abs_new_y0 + dh - abs_new_h0 / 2.0
+                    new_y2 = new_y1 + abs_new_h0
+
+                new_x1 = np.max([0, new_x1])
+                new_x2 = np.min([new_x2, bg_w-1])
+                new_y1 = np.max([0, new_y1])
+                new_y2 = np.min([new_y2, bg_h-1])
+
                 result.append([new_x1, new_y1, new_x2, new_y2])
 
         return np.asarray(result, dtype=int)
@@ -386,7 +419,7 @@ class Augment:
                     for j in range(0, w - kernel_size, kernel_size):
                         color = img[i + kernel_size][j].tolist()
                         sub_img = cv.rectangle(sub_img, (j, i), (j + kernel_size - 1, i + kernel_size - 1),
-                                                     color, -1)
+                                               color, -1)
                 sub_img = cv.rectangle(sub_img, (0, 0), (w - 1, h - 1), (0, 250, 0))
                 img[starty: endy, startx: endx, :] = sub_img
             return img
@@ -416,7 +449,8 @@ class Augment:
                 for i in range(0, h__ - kernel_size, kernel_size):
                     for j in range(0, w__ - kernel_size, kernel_size):
                         color = sub_box_image[i + kernel_size][j].tolist()
-                        sub_box_image = cv.rectangle(sub_box_image, (j, i), (j + kernel_size - 1, i + kernel_size - 1), color, -1)
+                        sub_box_image = cv.rectangle(sub_box_image, (j, i), (j + kernel_size - 1, i + kernel_size - 1),
+                                                     color, -1)
                 box_image[starty: endy, startx: endx, :] = sub_box_image
             img[y1:y2, x1:x2, :] = box_image
         return img, boxes
@@ -425,32 +459,39 @@ class Augment:
     def masaic():
         pass
 
-
     @staticmethod
     def resize(img: np.ndarray,
                boxes: list or np.ndarray = None,
-               new_shape=(608, 608)
+               new_shape=config.image_input_shape
                ):
+        """
+
+        :param img:
+        :param boxes:
+        :param new_shape:       yolo input shape
+        :return:
+        """
 
         h, w = img.shape[:2]
         ratio_x, ratio_y = np.random.randint(50, 150) / 100.0, np.random.randint(50, 150) / 100.0
-        ratio_x, ratio_y = .5, .5
         new_h, new_w = np.round(h * ratio_y).astype(int), np.round(w * ratio_x).astype(int)
         new_image = cv.resize(img, (new_w, new_h), interpolation=cv.INTER_CUBIC)
         bg_h, bg_w = new_shape
-        bg_image = np.ones(shape=(bg_h, bg_w, 3), dtype=new_image.dtype)
-        dh = (new_h - bg_h) // 2
-        dw = (new_w - bg_w) // 2
+        bg_image = np.ones(shape=(bg_h, bg_w, 3), dtype=new_image.dtype) * np.random.random_integers(0, 255, size=(1, 1, 3)).astype(new_image.dtype)
+        dh = int(round((new_h - bg_h + 0.5) // 2.0 - 1))
+        dw = int(round((new_w - bg_w + 0.5) // 2.0 - 1))
 
+        new_image_shape = new_image.shape
+        bg_image_shape = bg_image.shape
         if new_h <= bg_h and new_w <= bg_w:
-            bg_image[-dh:bg_h+dh, -dw:bg_w+dw, :] = new_image
-        elif new_h > bg_h:
-            bg_image = new_image[dh:new_h-dh, ...]
+            bg_image[-dh:new_image_shape[0] - dh, -dw:new_image_shape[1] - dw, :] = new_image
+        elif new_h > bg_h and new_w <= bg_w:
+            bg_image[:, -dw:new_image_shape[1] - dw, :] = new_image[dh:bg_image_shape[0] + dh, ...]
+        elif new_h <= bg_h and new_w > bg_w:
+            bg_image[-dh:new_image_shape[0] - dh, ...] = new_image[:, dw:bg_image_shape[1] + dw, :]
         else:
-            bg_image = new_image[:, dw:new_w-dw, :]
+            bg_image = new_image[dh:-dh, dw:-dw, :]
         if not boxes:
             return bg_image
         new_boxes = Augment.correct_boxes(h, w, boxes, 'resize', new_h=new_h, new_w=new_w, bg_w=bg_w, bg_h=bg_h)
         return bg_image, new_boxes
-
-
