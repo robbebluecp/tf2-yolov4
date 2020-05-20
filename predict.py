@@ -8,13 +8,14 @@ import argparse
 import tensorflow as tf
 
 devices = tf.config.experimental.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(devices[0], True)
+if devices:
+    tf.config.experimental.set_memory_growth(devices[0], True)
 
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-m', '--model', type=str, help='input h5 model path', default='model_train/ep027-loss18.731-valloss19.110.h5')
-parser.add_argument('-i', '--image', type=str, help='input image file path', default='data/dog.jpg')
+parser.add_argument('-m', '--model', type=str, help='input h5 model path', default='model_train/yolov4.h5')
+parser.add_argument('-i', '--image', type=str, help='input image file path', default='data/test2.png')
 
 
 args = parser.parse_args()
@@ -40,7 +41,9 @@ image = cv.imread(image_file_path)
 image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
 
 
-new_image = utils_image.resize_image_by_cv(image, config.image_input_shape)
+new_image = utils_image.resize_image(image, config.image_input_shape)
+# new_image = cv.resize(image, (608, 608), interpolation=cv.INTER_CUBIC)
+
 new_image = np.array(new_image, dtype='float32')
 new_image /= 255.
 new_image = np.expand_dims(new_image, 0)  # Add batch dimension.

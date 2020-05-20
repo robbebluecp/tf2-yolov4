@@ -12,7 +12,7 @@ import random
 from PIL import Image
 
 
-def resize_image_by_cv(image, new_size):
+def resize_image(image, new_size):
     iw, ih = image.shape[1], image.shape[0]
     w, h = new_size
     scale = min(w / iw, h / ih)
