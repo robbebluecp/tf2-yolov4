@@ -64,8 +64,7 @@ def box_diou(b1, b2):
     return diou
 
 
-def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5, label_smoothing=0, use_focal_loss=False,
-               use_focal_obj_loss=False, use_softmax_loss=False, use_giou_loss=False, use_diou_loss=False):
+def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5):
     '''Return yolo4_loss tensor
 
     Parameters

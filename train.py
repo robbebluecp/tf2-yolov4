@@ -23,7 +23,7 @@ class_mapping = dict(enumerate(config.classes_names))
 class_mapping = {class_mapping[key]: key for key in class_mapping}
 
 
-model_yolo = models.YOLO(pre_train='model_train/yolov4.h5')()
+model_yolo = models.YOLO()()
 
 f = open(config.label_path)
 label_lines = f.readlines()
@@ -42,7 +42,6 @@ model_loss = keras.layers.Lambda(function=loss.yolo4_loss,
                                      'anchors': config.anchors,
                                      'num_classes': config.num_classes,
                                      'ignore_thresh': config.ignore_thresh,
-                                     'use_diou_loss': True,
                                  })([*model_yolo.output, *y_true])
 
 tensorboard = keras.callbacks.TensorBoard()

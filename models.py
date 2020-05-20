@@ -6,7 +6,6 @@ import numpy as np
 from tools import utils
 
 
-
 class Mish(keras.layers.Layer):
     """
     Mish Activation Function.
@@ -42,7 +41,6 @@ class YOLO:
         self.spp = self.get_spp()
         self.pan = self.get_pan()
         self.yolo = keras.models.Model(self.inputs, [*self.pan])
-        self.yolo.summary()
         if pre_train:
             print('loading pre-weights file ...')
             self.yolo.load_weights(pre_train, by_name=True, skip_mismatch=True)
@@ -50,7 +48,6 @@ class YOLO:
             for i in range(num):
                 self.yolo.layers[i].trainable = False
             print('loading finished')
-
 
     def conv_base_block(self, inputs, filters, kernel_size, strides=(1, 1), use_bias=True, name=None):
         """
@@ -242,11 +239,8 @@ class YOLO:
             box_class_probs = utils.sigmoid(feats[..., 5:])
         return box_xy, box_wh, box_confidence, box_class_probs
 
-
     def __call__(self, *args, **kwargs):
         return self.yolo
-
-
 
 def compose(*funcs):
     """Compose arbitrarily many functions, evaluated left to right.
@@ -260,6 +254,3 @@ def compose(*funcs):
         raise ValueError('Composition of empty sequence not supported.')
 
 
-if __name__ == '__main__':
-    y = YOLO()()
-    y.summary()

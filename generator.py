@@ -20,6 +20,7 @@ def preprocess_true_boxes(true_boxes: np.ndarray,
     :return:
     """
     assert (true_boxes[..., 4] < num_classes).all(), 'class id must be less than num_classes'
+
     num_layers = len(anchors) // 3  # default setting
 
     true_boxes = np.array(true_boxes, dtype='float32')
@@ -83,7 +84,7 @@ def data_generator(label_lines, batch_size, input_shape, anchors, num_classes):
     :param batch_size:          batch size
     :param input_shape:         images' input shape, generally we use 608 or 416
     :param anchors:             all the anchors
-    :param num_classes:         total count of classes, this value of voc is 20
+    :param num_classes:         total count of classes, value of voc is 20
     :return:
     """
 
@@ -100,15 +101,17 @@ def data_generator(label_lines, batch_size, input_shape, anchors, num_classes):
             info = label_line.split()
             image_file_path, cors = info[0], info[1:]
             cors = np.array([np.array(list(map(int, box.split(',')))) for box in cors])
-
             # Augment
             new_image, new_box = utils_image.Augment(img_path=image_file_path, boxes=cors)()
+            new_box = np.concatenate([new_box, np.zeros(shape=(20 - len(new_box), 5))])
 
             image_data.append(new_image)
             box_data.append(new_box)
+
             i = (i + 1) % n
         image_data = np.array(image_data)
         box_data = np.array(box_data)
+
         # (N, 20, 5), (None, None), (9, 2), 10
         # return [N, 13, 13, 3, 15]
         y_true = preprocess_true_boxes(box_data, input_shape, anchors, num_classes)

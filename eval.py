@@ -65,6 +65,9 @@ def yolo_eval(yolo_outputs,
               iou_threshold=.5):
     """
 
+    TODO: optimization below steps in the future
+    predict -> correct -> nms -> output
+
     :param yolo_outputs:    (N, 13, 13, 255), ...
     :param anchors:         (9, 2)
     :param num_classes:     (15, )

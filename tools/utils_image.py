@@ -108,6 +108,10 @@ class Augment:
                  **kwargs):
         self.img = img
         self.boxes = boxes
+        if isinstance(self.boxes, list):
+            self.boxes = np.asarray(self.boxes, dtype=int)
+        if self.boxes.shape[-1] == 4:
+            self.boxes = np.concatenate([self.boxes, np.zeros(shape=(self.boxes.shape[0], 1))], axis=-1)
         self.img_path = img_path
         self.kwargs = kwargs
 
@@ -117,7 +121,7 @@ class Augment:
     def augment(self):
 
         if self.img_path:
-            self.img = cv.imread(self.img)
+            self.img = cv.imread(self.img_path)
         if self.check_random(3):
             self.img, self.boxes = self.rotate(self.img, self.boxes, angel=self.set_random(3) * 90)
         if self.check_random(3):
@@ -170,7 +174,7 @@ class Augment:
         w0 = (width - 0.5) / 2.0
         h0 = (height - 0.5) / 2.0
         for box in boxes:
-            x1, y1, x2, y2 = box
+            x1, y1, x2, y2, class_id = box
             rela_x0 = (x1 + x2) / float(width) / 2
             rela_y0 = (y1 + y2) / float(height) / 2
             rela_w0 = np.abs(x1 - x2) / float(width)
@@ -205,7 +209,7 @@ class Augment:
                 new_y1 = np.max([0, new_y1])
                 new_y2 = np.min([height, new_y2])
 
-                result.append([new_x1, new_y1, new_x2, new_y2])
+                result.append([new_x1, new_y1, new_x2, new_y2, class_id])
 
             elif aug_type == 'flip':
                 if kwargs.get('flip_code', 1) == 1:
@@ -223,7 +227,7 @@ class Augment:
                     new_x2 = width - x1
                     new_y1 = height - y2
                     new_y2 = height - y1
-                result.append([new_x1, new_y1, new_x2, new_y2])
+                result.append([new_x1, new_y1, new_x2, new_y2, class_id])
 
             elif aug_type == 'resize':
                 new_h, new_w = kwargs.get('new_h'), kwargs.get('new_w')
@@ -266,7 +270,7 @@ class Augment:
                 new_y1 = np.max([0, new_y1])
                 new_y2 = np.min([new_y2, bg_h - 1])
 
-                result.append([new_x1, new_y1, new_x2, new_y2])
+                result.append([new_x1, new_y1, new_x2, new_y2, class_id])
 
         return np.asarray(result, dtype=int)
 
@@ -282,7 +286,7 @@ class Augment:
 
         example:
                 img_path = 'data/000030.jpg'
-                new_image, new_boxes = Augment.rotate(img, 90, boxes=[[36, 205, 180, 289], [51, 160, 150, 292], [295, 138, 450, 290]])
+                new_image, new_boxes = Augment.rotate(img, 90, boxes=[[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]])
                 for new_box in new_boxes:
                     x1, y1, x2, y2 = new_box
                     new_image = cv.rectangle(new_image, (x1, y1), (x2, y2), (0, 250, 0))
@@ -311,7 +315,7 @@ class Augment:
 
         example:
             img_path = 'data/000030.jpg'
-            boxes = [[36, 205, 180, 289], [51, 160, 150, 292], [295, 138, 450, 290]]
+            boxes = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
             a = Augment()
 
             new_image, new_boxes = a.flip(img, boxes, 1)
@@ -352,7 +356,7 @@ class Augment:
         example:
                 img_path = 'data/000030.jpg'
                 img = cv.imread(img_path)
-                boxes = [[36, 205, 180, 289], [51, 160, 150, 292], [295, 138, 450, 290]]
+                boxes = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
                 a = Augment()
                 new_image, new_boxes = a.mosaic(img, boxes)
                 cv.imshow('', new_image)
@@ -388,7 +392,7 @@ class Augment:
             return img, []
 
         for box in boxes:
-            x1, y1, x2, y2 = box
+            x1, y1, x2, y2, class_id = box
             box_image = img[y1:y2, x1:x2, :]
             h_, w_ = box_image.shape[:2]
 
@@ -441,14 +445,14 @@ class Augment:
 
         examples:
             img_path1 = 'data/000030.jpg'
-            boxes1 = [[36, 205, 180, 289], [51, 160, 150, 292], [295, 138, 450, 290]]
+            boxes1 = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
             img_path2 = 'data/000003.jpg'
             boxes2 = [[123,155,215,195], [239,156,307,205]]
             img1 = cv.imread(img_path1)
             img2 = cv.imread(img_path2)
             new_image, new_boxes = Augment.mixup(img1, img2, boxes1, boxes2)
             for box in new_boxes:
-                x1, y1, x2, y2 = box
+                x1, y1, x2, y2, class_id = box
                 new_image = cv.rectangle(new_image, (x1, y1), (x2, y2), (0, 250, 0))
             cv.imshow('', new_image)
             cv.waitKey()
@@ -496,12 +500,12 @@ class Augment:
 
         example:
                 img_path = 'data/000030.jpg'
-                boxes = [[36, 205, 180, 289], [51, 160, 150, 292], [295, 138, 450, 290]]
+                boxes = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
 
                 img = cv.imread(img_path)
                 new_image, new_boxes = Augment.resize(img, boxes)
                 for box in new_boxes:
-                    x1, y1, x2, y2 = box
+                    x1, y1, x2, y2, class_id = box
                     new_image = cv.rectangle(new_image, (x1, y1), (x2, y2), (0, 250, 0))
                 cv.imshow('', new_image)
                 cv.waitKey()
@@ -544,12 +548,12 @@ class Augment:
 
         example:
                 img_path1 = 'data/000030.jpg'
-                boxes1 = [[36, 205, 180, 289], [51, 160, 150, 292], [295, 138, 450, 290]]
+                boxes1 = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
                 img1 = cv.imread(img_path1)
                 new_image, new_boxes = Augment.colors(img1, boxes1)
 
                 for box in new_boxes:
-                    x1, y1, x2, y2 = box
+                    x1, y1, x2, y2, class_id = box
                     new_image = cv.rectangle(new_image, (x1, y1), (x2, y2), (0, 250, 0))
                 cv.imshow('', new_image)
                 cv.waitKey()
