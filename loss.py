@@ -100,6 +100,7 @@ def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5):
 
     batch_tensor = K.cast(batch, K.floatx())
 
+
     for l in range(num_layers):
         object_mask = y_true[l][..., 4:5]
         true_class_probs = y_true[l][..., 5:]
