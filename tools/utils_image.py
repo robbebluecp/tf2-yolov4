@@ -99,7 +99,7 @@ def draw_rectangle(image, boxes, scores, classes, class_names, colors, mode='cv'
 
 
 class Augment:
-    my_all = ['rotate', 'flip', 'mosaic', 'resize', 'mixup', 'makeup', 'noise']
+    my_all = ['rotate', 'flip', 'pixel', 'resize', 'mixup', 'makeup', 'noise']
 
     def __init__(self,
                  img: np.ndarray = None,
@@ -110,6 +110,8 @@ class Augment:
         self.boxes = boxes
         if isinstance(self.boxes, list):
             self.boxes = np.asarray(self.boxes, dtype=int)
+        elif boxes is None:
+            self.boxes = np.array([])
         if self.boxes.shape[-1] == 4:
             self.boxes = np.concatenate([self.boxes, np.zeros(shape=(self.boxes.shape[0], 1))], axis=-1)
         self.img_path = img_path
@@ -127,12 +129,13 @@ class Augment:
         if self.check_random(3):
             self.img, self.boxes = self.flip(self.img, self.boxes, flip_code=self.set_random(2) - 1)
         if self.check_random(2):
-            self.img, self.boxes = self.mosaic(self.img, self.boxes)
+            self.img, self.boxes = self.pixelate(self.img, self.boxes)
         if self.check_random(4) and self.kwargs.get('img2') and self.kwargs.get('boxes2'):
             self.img, self.boxes = self.mixup(self.img, self.kwargs.get('img2'), self.boxes, self.kwargs.get('boxes2'))
 
         if self.check_random(1):
-            self.img, self.boxes = self.resize(self.img, self.boxes, new_shape=self.kwargs.get('new_shape') or (608, 608))
+            self.img, self.boxes = self.resize(self.img, self.boxes,
+                                               new_shape=self.kwargs.get('new_shape') or (608, 608))
         if self.check_random(3, 2):
             self.img, self.boxes = self.colors(self.img, self.boxes)
         return self.img / 255.0, self.boxes
@@ -149,8 +152,8 @@ class Augment:
         return
 
     @staticmethod
-    def set_random(num: int):
-        return random.randint(0, num)
+    def set_random(end: int, start=0):
+        return random.randint(start, end)
 
     @staticmethod
     def scope_random(a: int or float = 0.0,
@@ -285,10 +288,11 @@ class Augment:
         :return:
 
         example:
-                img_path = 'data/000030.jpg'
-                new_image, new_boxes = Augment.rotate(img, 90, boxes=[[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]])
+                img_path = '../data/000030.jpg'
+                img = cv.imread(img_path)
+                new_image, new_boxes = Augment.rotate(img, angel = 90, boxes=[[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]])
                 for new_box in new_boxes:
-                    x1, y1, x2, y2 = new_box
+                    x1, y1, x2, y2, cls_id = new_box
                     new_image = cv.rectangle(new_image, (x1, y1), (x2, y2), (0, 250, 0))
                 cv.imshow('', new_image)
                 cv.waitKey()
@@ -334,38 +338,38 @@ class Augment:
         return new_image, np.asarray(new_boxes, dtype=int)
 
     @staticmethod
-    def mosaic(img: np.ndarray,
-               boxes: list or np.ndarray = None,
-               mosaic_num=10,
-               mask_ratio=0.3,
-               kernel_ratio=0.1):
+    def pixel(img: np.ndarray,
+              boxes: list or np.ndarray = None,
+              pixel_num=10,
+              mask_ratio=0.3,
+              kernel_ratio=0.1):
         """
 
         :param img:
         :param boxes:
-        :param mosaic_num:              count of mosaic fields
-        :param mask_ratio:              size of a mosaic field(shape of square)
-        :param kernel_ratio:            size of each mosaic cell, a mosaic field contains many mosaic cell
+        :param pixel_num:              count of pixel fields
+        :param mask_ratio:              size of a pixel field(shape of square)
+        :param kernel_ratio:            size of each pixel cell, a pixel field contains many pixel cell
         :return:
 
-        this part uses mosaic way for augment.
-        Normally, an image includes several boxes, and each box here is divided into 【mosaic_num】small fields, each
+        this part uses pixel way for augment.
+        Normally, an image includes several boxes, and each box here is divided into 【pixel_num】small fields, each
         field's size is about 【mask_ratio】 the area(a ares is a square) by one box size. And every field also needs
         to be separated into many cell, with size【kernel_ratio】of a field.
 
         example:
-                img_path = 'data/000030.jpg'
+                img_path = '../data/000030.jpg'
                 img = cv.imread(img_path)
                 boxes = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
                 a = Augment()
-                new_image, new_boxes = a.mosaic(img, boxes)
+                new_image, new_boxes = a.pixel(img, boxes)
                 cv.imshow('', new_image)
                 cv.waitKey()
                 cv.destroyAllWindows()
         """
 
         if not len(boxes):
-            for block in range(np.random.randint(1, mosaic_num)):
+            for block in range(np.random.randint(1, pixel_num)):
                 h, w = img.shape[:2]
 
                 start_ratio_x = np.random.randint(1, 1000 * (1 - mask_ratio)) / 1000.0
@@ -396,7 +400,7 @@ class Augment:
             box_image = img[y1:y2, x1:x2, :]
             h_, w_ = box_image.shape[:2]
 
-            for block in range(np.random.randint(1, mosaic_num)):
+            for block in range(np.random.randint(1, pixel_num)):
                 start_ratio_x = np.random.randint(1, 1000 * (1 - mask_ratio)) / 1000.0
                 start_ratio_y = np.random.randint(1, 1000 * (1 - mask_ratio)) / 1000.0
                 end_ratio_x = start_ratio_x + mask_ratio
@@ -444,9 +448,9 @@ class Augment:
         :return:
 
         examples:
-            img_path1 = 'data/000030.jpg'
+            img_path1 = '../data/000030.jpg'
             boxes1 = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
-            img_path2 = 'data/000003.jpg'
+            img_path2 = '../data/000003.jpg'
             boxes2 = [[123,155,215,195], [239,156,307,205]]
             img1 = cv.imread(img_path1)
             img2 = cv.imread(img_path2)
@@ -499,7 +503,7 @@ class Augment:
         :return:
 
         example:
-                img_path = 'data/000030.jpg'
+                img_path = '../data/000030.jpg'
                 boxes = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
 
                 img = cv.imread(img_path)
@@ -580,3 +584,74 @@ class Augment:
         if not len(boxes):
             boxes = []
         return new_image, boxes
+
+
+    def mosaic(self, annotation_path):
+
+        boxes = []
+        images = []
+        new_boxes = []
+        ih, iw = (608, 608)
+        new_image = np.full((ih, iw, 3), 128.)
+
+        scale = round(self.scope_random(0.5, 0.8), 2)
+        offset_x = 1 - scale
+        offset_y = 1 - scale
+        nw = int(iw * scale)
+        nh = int(ih * scale)
+        place_x = np.array([0, 0, int(iw * offset_x), int(iw * offset_x)])
+        place_y = np.array([0, int(ih * offset_y), 0, int(ih * offset_y)])
+
+        with open(annotation_path, 'r', encoding='utf-8') as f:
+            annotations = f.readlines()
+            for line in annotations:
+                annotation = line.split(' ')
+                img = cv.imread(annotation[0])
+                box = np.array([np.array(list(map(int, box.split(',')))) for box in annotation[1:]])
+                images.append(img)
+                boxes.append(box)
+
+        for i in range(4):
+            img = images[i]
+            box = boxes[i]
+            if self.scope_random() < 0.5:
+                flip_code = [-1, 0, 1]
+                flip_code = flip_code[self.set_random(2)]
+                img, box = self.flip(img, box, flip_code)
+            if self.scope_random() < 0.5:
+                angel = self.scope_random(0, 180)
+                img, box = self.rotate(img, box, angel)
+            if self.scope_random() < 0.5:
+                pixel_num = self.set_random(10, 2)
+                img, box = self.pixel(img, box, pixel_num=pixel_num, mask_ratio=0.3, kernel_ratio=0.1)
+            if self.scope_random() < 0.5:
+                img, box = self.colors(img, box)
+
+            # resize
+            h, w = img.shape[:2]
+            img = cv.resize(img, (nw, nh), cv.INTER_CUBIC)
+            box[:, [0, 2]] = box[:, [0, 2]] * nw / w
+            box[:, [1, 3]] = box[:, [1, 3]] * nh / h
+
+            dx = place_x[i]
+            dy = place_y[i]
+            new_image[dy:dy + nh, dx:dx + nw, :] = img
+            box[:, [0, 2]] = box[:, [0, 2]] + dx
+            box[:, [1, 3]] = box[:, [1, 3]] + dy
+            if i == 0:
+                fx = lambda x: x if x < int(iw * offset_x) else int(iw * offset_x)
+                fy = lambda x: x if x < int(ih * offset_y) else int(ih * offset_y)
+                box[:, 2] = np.array(list(map(fx, box[:, 2])))
+                box[:, 3] = np.array(list(map(fy, box[:, 3])))
+            elif i == 1:
+                fx = lambda x: x if x < int(iw * offset_x) else int(iw * offset_x)
+                box[:, 2] = np.array(list(map(fx, box[:, 2])))
+            elif i == 2:
+                fy = lambda x: x if x < int(ih * offset_y) else int(ih * offset_y)
+                box[:, 3] = np.array(list(map(fy, box[:, 3])))
+            box_w = (box[:, 2] - box[:, 0]) > iw * 0.08
+            box_h = (box[:, 3] - box[:, 1]) > ih * 0.08
+            box = box[box_w & box_h]
+            new_boxes.extend(box)
+        new_image = new_image.astype(np.uint8)
+        return new_image, new_boxes

@@ -1,8 +1,8 @@
 import prepare
 
 font_path = 'font_data/FiraMono-Medium.otf'
-classes_path = 'model_data/voc_classes.txt'
-anchors_path = 'model_data/yolo4_anchors.txt'
+classes_path = 'E:/tf2-yolov4/model_data/coco_classes.txt'
+anchors_path = 'E:/tf2-yolov4/model_data/yolo4_anchors.txt'
 classes_names = prepare.PrepareConfig().get_classes(classes_path)
 anchors = prepare.PrepareConfig().get_anchors(anchors_path)
 num_classes = len(classes_names)
