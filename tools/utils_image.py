@@ -9,7 +9,6 @@ import config
 import colorsys
 import numpy as np
 import random
-from PIL import Image
 
 
 def resize_image(image, new_size):
@@ -110,12 +109,15 @@ class Augment:
         self.boxes = boxes
         if isinstance(self.boxes, list):
             self.boxes = np.asarray(self.boxes, dtype=int)
-        elif boxes is None:
+        if not len(boxes):
             self.boxes = np.array([])
         if self.boxes.shape[-1] == 4:
             self.boxes = np.concatenate([self.boxes, np.zeros(shape=(self.boxes.shape[0], 1))], axis=-1)
+        self.boxes = np.asarray(self.boxes, dtype=int)
+
         self.img_path = img_path
         self.kwargs = kwargs
+
 
     def __call__(self, *args, **kwargs):
         return self.augment()
@@ -129,13 +131,13 @@ class Augment:
         if self.check_random(3):
             self.img, self.boxes = self.flip(self.img, self.boxes, flip_code=self.set_random(2) - 1)
         if self.check_random(2):
-            self.img, self.boxes = self.pixelate(self.img, self.boxes)
+            self.img, self.boxes = self.pixel(self.img, self.boxes)
         if self.check_random(4) and self.kwargs.get('img2') and self.kwargs.get('boxes2'):
             self.img, self.boxes = self.mixup(self.img, self.kwargs.get('img2'), self.boxes, self.kwargs.get('boxes2'))
 
         if self.check_random(1):
-            self.img, self.boxes = self.resize(self.img, self.boxes,
-                                               new_shape=self.kwargs.get('new_shape') or (608, 608))
+            self.img, self.boxes = self.resize(self.img, self.boxes, new_shape=self.kwargs.get('new_shape') or (608, 608))
+
         if self.check_random(3, 2):
             self.img, self.boxes = self.colors(self.img, self.boxes)
         return self.img / 255.0, self.boxes
@@ -152,8 +154,8 @@ class Augment:
         return
 
     @staticmethod
-    def set_random(end: int, start=0):
-        return random.randint(start, end)
+    def set_random(num: int):
+        return random.randint(0, num)
 
     @staticmethod
     def scope_random(a: int or float = 0.0,
@@ -249,18 +251,26 @@ class Augment:
                     new_x2 = abs_new_x0 + abs_new_w0 / 2.0 + dw
                     new_y1 = abs_new_y0 - abs_new_h0 / 2.0 + dh
                     new_y2 = abs_new_y0 + abs_new_h0 / 2.0 + dh
+                    new_x1 = np.max([dw, new_x1])
+                    new_x2 = np.min([dw + new_w, new_x2])
+                    new_y1 = np.max([dh, new_y1])
+                    new_y2 = np.min([dh + new_h, new_y2])
 
                 elif dh < 0 and dw >= 0:
                     new_x1 = abs_new_x0 - abs_new_w0 / 2.0 + dw
                     new_x2 = abs_new_x0 + abs_new_w0 / 2.0 + dw
                     new_y1 = abs_new_y0 + dh - abs_new_h0 / 2.0
                     new_y2 = new_y1 + abs_new_h0
+                    new_y1 = np.max([dh, new_y1])
+                    new_y2 = np.min([dh + new_h, new_y2])
 
                 elif dh >= 0 and dw < 0:
                     new_x1 = abs_new_x0 + dw - abs_new_w0 / 2.0
                     new_x2 = new_x1 + abs_new_w0
                     new_y1 = abs_new_y0 - abs_new_h0 / 2.0 + dh
                     new_y2 = abs_new_y0 + abs_new_h0 / 2.0 + dh
+                    new_x1 = np.max([dw, new_x1])
+                    new_x2 = np.min([dw + new_w, new_x2])
 
                 else:
                     new_x1 = abs_new_x0 + dw - abs_new_w0 / 2.0
@@ -272,7 +282,8 @@ class Augment:
                 new_x2 = np.min([new_x2, bg_w - 1])
                 new_y1 = np.max([0, new_y1])
                 new_y2 = np.min([new_y2, bg_h - 1])
-
+                if new_x1 >= bg_w or new_y1 >= bg_h:
+                    continue
                 result.append([new_x1, new_y1, new_x2, new_y2, class_id])
 
         return np.asarray(result, dtype=int)
@@ -288,9 +299,9 @@ class Augment:
         :return:
 
         example:
-                img_path = '../data/000030.jpg'
+                img_path = 'data/000030.jpg'
                 img = cv.imread(img_path)
-                new_image, new_boxes = Augment.rotate(img, angel = 90, boxes=[[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]])
+                new_image, new_boxes = Augment.rotate(img, 90, boxes=[[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]])
                 for new_box in new_boxes:
                     x1, y1, x2, y2, cls_id = new_box
                     new_image = cv.rectangle(new_image, (x1, y1), (x2, y2), (0, 250, 0))
@@ -347,9 +358,9 @@ class Augment:
 
         :param img:
         :param boxes:
-        :param pixel_num:              count of pixel fields
-        :param mask_ratio:              size of a pixel field(shape of square)
-        :param kernel_ratio:            size of each pixel cell, a pixel field contains many pixel cell
+        :param pixel_num:              count of mosaic fields
+        :param mask_ratio:              size of a mosaic field(shape of square)
+        :param kernel_ratio:            size of each mosaic cell, a mosaic field contains many mosaic cell
         :return:
 
         this part uses pixel way for augment.
@@ -358,7 +369,7 @@ class Augment:
         to be separated into many cell, with size【kernel_ratio】of a field.
 
         example:
-                img_path = '../data/000030.jpg'
+                img_path = 'data/000030.jpg'
                 img = cv.imread(img_path)
                 boxes = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
                 a = Augment()
@@ -448,9 +459,9 @@ class Augment:
         :return:
 
         examples:
-            img_path1 = '../data/000030.jpg'
+            img_path1 = 'data/000030.jpg'
             boxes1 = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
-            img_path2 = '../data/000003.jpg'
+            img_path2 = 'data/000003.jpg'
             boxes2 = [[123,155,215,195], [239,156,307,205]]
             img1 = cv.imread(img_path1)
             img2 = cv.imread(img_path2)
@@ -503,7 +514,7 @@ class Augment:
         :return:
 
         example:
-                img_path = '../data/000030.jpg'
+                img_path = 'data/000030.jpg'
                 boxes = [[36, 205, 180, 289, 1], [51, 160, 150, 292, 14], [295, 138, 450, 290, 14]]
 
                 img = cv.imread(img_path)
@@ -517,32 +528,39 @@ class Augment:
         """
 
         h, w = img.shape[:2]
-        ratio_x, ratio_y = np.random.randint(50, 150) / 100.0, np.random.randint(50, 150) / 100.0
-        new_h, new_w = np.round(h * ratio_y).astype(int), np.round(w * ratio_x).astype(int)
-        new_image = cv.resize(img, (new_w, new_h), interpolation=cv.INTER_CUBIC)
         bg_h, bg_w = new_shape
+        ratio_x, ratio_y = np.random.randint(50, 150) / 100.0, np.random.randint(50, 150) / 100.0
+        new_h, new_w = np.min([np.ceil(h * ratio_y).astype(int), bg_h]), np.min([np.ceil(w * ratio_x).astype(int), bg_w])
+        new_image = cv.resize(img, (new_w, new_h), interpolation=cv.INTER_CUBIC)
         bg_image = np.ones(shape=(bg_h, bg_w, 3), dtype=new_image.dtype) * np.random.random_integers(0, 255, size=(
             1, 1, 3)).astype(new_image.dtype)
-        dh = int(round((new_h - bg_h + 0.5) // 2.0 - 1))
-        dw = int(round((new_w - bg_w + 0.5) // 2.0 - 1))
+        # dh = int(round((new_h - bg_h + 0.5) // 2.0 - 1))
+        # dw = int(round((new_w - bg_w + 0.5) // 2.0 - 1))
+        dh = (new_h - bg_h) // 2
+        dw = (new_w - bg_w) // 2
 
         new_image_shape = new_image.shape
         bg_image_shape = bg_image.shape
+
+        # new_image_shape[0] = new_image_shape[0] - 1 if new_image_shape[0] == bg_image_shape[0] else new_image_shape[0]
+        # new_image_shape[1] = new_image_shape[1] - 1 if new_image_shape[1] == bg_image_shape[1] else new_image_shape[1]
+
         if new_h <= bg_h and new_w <= bg_w:
+
             bg_image[-dh:new_image_shape[0] - dh, -dw:new_image_shape[1] - dw, :] = new_image
         elif new_h > bg_h and new_w <= bg_w:
             bg_image[:, -dw:new_image_shape[1] - dw, :] = new_image[dh:bg_image_shape[0] + dh, ...]
         elif new_h <= bg_h and new_w > bg_w:
             bg_image[-dh:new_image_shape[0] - dh, ...] = new_image[:, dw:bg_image_shape[1] + dw, :]
         else:
-            bg_image = new_image[dh:-dh, dw:-dw, :]
+            bg_image = new_image[-dh:dh, -dw:dw, :]
         if not len(boxes):
             return bg_image, []
         new_boxes = Augment.correct_boxes(h, w, boxes, 'resize', new_h=new_h, new_w=new_w, bg_w=bg_w, bg_h=bg_h)
         return bg_image, np.asarray(new_boxes, dtype=int)
 
     @staticmethod
-    def colors(img, boxes=None, **kwargs):
+    def colors(img, boxes=None, return_back=True, **kwargs):
         """
 
         :param img:
@@ -578,13 +596,12 @@ class Augment:
         x[x > 1] = 1
         x[x < 0] = 0
         new_image = hsv_to_rgb(x)
-        if kwargs.get('return_back'):
-            img *= 255
+        if kwargs.get('return_back') or return_back:
+            new_image *= 255
             new_image = np.asarray(new_image, np.uint8)
         if not len(boxes):
             boxes = []
         return new_image, boxes
-
 
     def mosaic(self, annotation_path):
 
