@@ -9,6 +9,7 @@ import config
 import colorsys
 import numpy as np
 import random
+import copy
 
 
 def resize_image(image, new_size):
@@ -104,25 +105,35 @@ class Augment:
                  img: np.ndarray = None,
                  boxes: list or np.ndarray = None,
                  img_path: str = None,
+                 img_info_list: list = None,
                  **kwargs):
-        self.img = img
-        self.boxes = boxes
+        self.img_info_list = img_info_list or kwargs.get('img_info_list')
+        if self.img_info_list:
+            self.img, self.boxes = self.load_file_from_list(self.img_info_list, 1)
+            self.img_path = None
+        else:
+            self.img = img
+            self.img_path = img_path
+            self.boxes = boxes
+
         if isinstance(self.boxes, list):
             self.boxes = np.asarray(self.boxes, dtype=int)
-        if not len(boxes):
+        if not len(self.boxes):
             self.boxes = np.array([])
         if self.boxes.shape[-1] == 4:
             self.boxes = np.concatenate([self.boxes, np.zeros(shape=(self.boxes.shape[0], 1))], axis=-1)
         self.boxes = np.asarray(self.boxes, dtype=int)
 
-        self.img_path = img_path
         self.kwargs = kwargs
-
 
     def __call__(self, *args, **kwargs):
         return self.augment()
 
     def augment(self):
+        """
+        you'd better do not change the order of augment - -
+        :return:
+        """
 
         if self.img_path:
             self.img = cv.imread(self.img_path)
@@ -132,11 +143,14 @@ class Augment:
             self.img, self.boxes = self.flip(self.img, self.boxes, flip_code=self.set_random(2) - 1)
         if self.check_random(2):
             self.img, self.boxes = self.pixel(self.img, self.boxes)
-        if self.check_random(4) and self.kwargs.get('img2') and self.kwargs.get('boxes2'):
-            self.img, self.boxes = self.mixup(self.img, self.kwargs.get('img2'), self.boxes, self.kwargs.get('boxes2'))
+        if self.check_random(4):
+            self.img, self.boxes = self.mixup(self.img, self.boxes, img_info_list=self.img_info_list)
+        if self.check_random(3):
+            self.img, self.boxes = self.mosaic(imgs=self.img, img_info_list=self.img_info_list)
 
         if self.check_random(1):
-            self.img, self.boxes = self.resize(self.img, self.boxes, new_shape=self.kwargs.get('new_shape') or (608, 608))
+            self.img, self.boxes = self.resize(self.img, self.boxes,
+                                               new_shape=self.kwargs.get('new_shape') or (608, 608))
 
         if self.check_random(3, 2):
             self.img, self.boxes = self.colors(self.img, self.boxes)
@@ -154,17 +168,64 @@ class Augment:
         return
 
     @staticmethod
-    def set_random(num: int):
-        return random.randint(0, num)
+    def set_random(end: int,
+                   start: int = 0):
+        """
+        get random integer number between start and end
+        :param end:
+        :param start:
+        :return:
+        """
+        return random.randint(start, end)
 
     @staticmethod
-    def scope_random(a: int or float = 0.0,
-                     b: int or float = 1.0):
-        return np.random.rand() * (b - a) + a
+    def scope_random(start: int or float = 0.0,
+                     end: int or float = 1.0):
+        """
+        get random number between start and end
+
+        :param start:
+        :param end:
+        :return:
+        """
+        return np.random.rand() * (end - start) + start
+
+    @staticmethod
+    def load_file_from_list(img_info_list: list,
+                            cnt: int = 2):
+        """
+        load file from lines
+        :param img_info_list:
+        :param cnt:
+        :return:
+
+        for example:
+            lines = ['/Users/robbe/others/tf_data/voc2007/images/009095.jpg 1,305,231,500,10 1,249,181,330,17',
+                     '/Users/robbe/others/tf_data/voc2007/images/009096.jpg 11,35,339,188,6',
+                     '/Users/robbe/others/tf_data/voc2007/images/009097.jpg 2,73,111,232,19']
+            imgs, boxes = load_file_from_list(lines, 2)
+
+        """
+        label_lines = np.random.choice(img_info_list, cnt)
+
+        img_list = []
+        box_list = []
+        for label_line in label_lines:
+            info = label_line.split()
+            image_file_path, cors = info[0], info[1:]
+            img = cv.imread(image_file_path)
+            cors = np.array([np.array(list(map(int, box.split(',')))) for box in cors], dtype=int)
+            img_list.append(img)
+            box_list.append(cors)
+        if cnt == 1:
+            return img, cors
+        return img_list, box_list
 
     @staticmethod
     def correct_boxes(height, width, boxes, aug_type='rotate', **kwargs):
         """
+
+        for correcting raw boxes to new boxes after augment
 
         :param height:      image height
         :param width:       image width
@@ -443,10 +504,12 @@ class Augment:
         pass
 
     @staticmethod
-    def mixup(img1: np.ndarray,
-              img2: np.ndarray,
+    def mixup(img1: np.ndarray = None,
               boxes1: list or np.ndarray = None,
-              boxes2: list or np.ndarray = None):
+              img2: np.ndarray = None,
+              boxes2: list or np.ndarray = None,
+              img_info_list: list = None,
+              **kwargs):
         """
 
         combine two pictures together with a certain value(128) mask
@@ -474,11 +537,24 @@ class Augment:
             cv.destroyAllWindows()
         """
 
+        img_info_list = img_info_list or kwargs.get('img_info_list')
+        if img_info_list and not len(img1):
+            imgs, boxes = Augment.load_file_from_list(img_info_list, 2)
+            img1, img2 = imgs
+            boxes1, boxes2 = boxes
+        elif img_info_list and len(img1) and len(boxes1):
+            img2, boxes2 = Augment.load_file_from_list(img_info_list, 1)
+        elif len(img1) and len(boxes1) and not len(img2):
+            img2 = copy.deepcopy(img1)
+            boxes2 = copy.deepcopy(boxes1)
+        else:
+            assert 'lack of some params, check it again!'
+
         h1, w1 = img1.shape[:2]
         h2, w2 = img2.shape[:2]
         img2 = cv.resize(img2, (w1, h1), interpolation=cv.INTER_CUBIC)
-        ratio_x = w1 / w2
-        ratio_y = h1 / h2
+        ratio_x = np.asarray(w1, dtype=np.float64) / w2
+        ratio_y = np.asarray(h1, dtype=np.float64) / h2
         img1 = Image.fromarray(img1)
         img2 = Image.fromarray(img2)
         mask = np.ones(shape=(h1, w1), dtype=np.uint8) * 128
@@ -488,18 +564,15 @@ class Augment:
         if not len(boxes2) and len(boxes1):
             return new_image, []
         else:
-            if isinstance(boxes1, list) or isinstance(boxes2, list):
-                boxes1 = np.asarray(boxes1, dtype=int)
-                boxes2 = np.asarray(boxes2, dtype=float)
+            boxes1 = np.asarray(boxes1, dtype=np.float64)
+            boxes2 = np.asarray(boxes2, dtype=np.float64)
             boxes2[:, 0] *= ratio_x
             boxes2[:, 2] *= ratio_x
             boxes2[:, 1] *= ratio_y
             boxes2[:, 3] *= ratio_y
+            # print(boxes1)
+            # print('\n', boxes2)
             return new_image, np.concatenate([boxes1, boxes2]).astype(int)
-
-    @staticmethod
-    def makeup():
-        pass
 
     @staticmethod
     def resize(img: np.ndarray,
@@ -530,7 +603,8 @@ class Augment:
         h, w = img.shape[:2]
         bg_h, bg_w = new_shape
         ratio_x, ratio_y = np.random.randint(50, 150) / 100.0, np.random.randint(50, 150) / 100.0
-        new_h, new_w = np.min([np.ceil(h * ratio_y).astype(int), bg_h]), np.min([np.ceil(w * ratio_x).astype(int), bg_w])
+        new_h, new_w = np.min([np.ceil(h * ratio_y).astype(int), bg_h]), np.min(
+            [np.ceil(w * ratio_x).astype(int), bg_w])
         new_image = cv.resize(img, (new_w, new_h), interpolation=cv.INTER_CUBIC)
         bg_image = np.ones(shape=(bg_h, bg_w, 3), dtype=new_image.dtype) * np.random.random_integers(0, 255, size=(
             1, 1, 3)).astype(new_image.dtype)
@@ -603,72 +677,79 @@ class Augment:
             boxes = []
         return new_image, boxes
 
-    def mosaic(self, annotation_path):
+    @staticmethod
+    def mosaic(imgs: list or np.ndarray = None,
+               imgs_path: list = None,
+               boxes: list or np.ndarray = None,
+               new_shape=(608, 608),
+               img_info_list = None,
+               **kwargs):
+        """
 
-        boxes = []
-        images = []
+        to combine several(4) pics together
+
+        :param imgs:            [img1, img2, img3, img4]
+        :param imgs_path:       [xxx1.jpg, xxx3.jpg, xxx3.jpg, xxx4.jpg]
+        :param boxes:           [[[1,2,3,4,0], [2,3,4,5,0]...], ...]
+        :param new_shape:       (608, 608)
+        :param img_info_list:   ['/Users/robbe/others/tf_data/voc2007/images/009110.jpg 144,62,293,266,14',
+                                 '/Users/robbe/others/tf_data/voc2007/images/009111.jpg 152,65,430,270,5 457,172,489,196,6', .....]
+        :param kwargs:
+        :return:
+        """
+        new_h, new_w = new_shape
+        bg_img = np.zeros(shape=(*new_shape, 3))
+        x0_ratio, y0_ratio = Augment.set_random(70, 30) / 100.0, Augment.set_random(70, 30) / 100.0
+        x0, y0 = int(round(new_w * x0_ratio)), int(round(new_h * y0_ratio))
+        pic1_w, pic1_h = x0, y0
+        pic2_w, pic2_h = new_w - x0, y0
+        pic3_w, pic3_h = x0, new_h - y0
+        pic4_w, pic4_h = new_w - x0, new_h - y0
+        shapes = [(pic1_h, pic1_w), (pic2_h, pic2_w), (pic3_h, pic3_w), (pic4_h, pic4_w)]
+
+        img_info_list = kwargs.get('img_info_list') or img_info_list
+        if img_info_list:
+            imgs, boxes = Augment.load_file_from_list(img_info_list, 4)
+        elif imgs_path:
+            imgs = [cv.imread(img_path) for img_path in imgs_path]
+        elif imgs:
+            if len(imgs) == 1:
+                imgs = [copy.deepcopy(imgs[0]) for i in range(4)]
+        else:
+            assert 1 == 2, 'lack of some params for function, check it again!'
+
         new_boxes = []
-        ih, iw = (608, 608)
-        new_image = np.full((ih, iw, 3), 128.)
 
-        scale = round(self.scope_random(0.5, 0.8), 2)
-        offset_x = 1 - scale
-        offset_y = 1 - scale
-        nw = int(iw * scale)
-        nh = int(ih * scale)
-        place_x = np.array([0, 0, int(iw * offset_x), int(iw * offset_x)])
-        place_y = np.array([0, int(ih * offset_y), 0, int(ih * offset_y)])
-
-        with open(annotation_path, 'r', encoding='utf-8') as f:
-            annotations = f.readlines()
-            for line in annotations:
-                annotation = line.split(' ')
-                img = cv.imread(annotation[0])
-                box = np.array([np.array(list(map(int, box.split(',')))) for box in annotation[1:]])
-                images.append(img)
-                boxes.append(box)
-
-        for i in range(4):
-            img = images[i]
+        for i in range(len(imgs)):
+            img = imgs[i]
             box = boxes[i]
-            if self.scope_random() < 0.5:
-                flip_code = [-1, 0, 1]
-                flip_code = flip_code[self.set_random(2)]
-                img, box = self.flip(img, box, flip_code)
-            if self.scope_random() < 0.5:
-                angel = self.scope_random(0, 180)
-                img, box = self.rotate(img, box, angel)
-            if self.scope_random() < 0.5:
-                pixel_num = self.set_random(10, 2)
-                img, box = self.pixel(img, box, pixel_num=pixel_num, mask_ratio=0.3, kernel_ratio=0.1)
-            if self.scope_random() < 0.5:
-                img, box = self.colors(img, box)
+            shape = shapes[i]
 
-            # resize
-            h, w = img.shape[:2]
-            img = cv.resize(img, (nw, nh), cv.INTER_CUBIC)
-            box[:, [0, 2]] = box[:, [0, 2]] * nw / w
-            box[:, [1, 3]] = box[:, [1, 3]] * nh / h
+            box[:, 0] = box[:, 0] * shape[1] / img.shape[1]
+            box[:, 2] = box[:, 2] * shape[1] / img.shape[1]
+            box[:, 1] = box[:, 1] * shape[0] / img.shape[0]
+            box[:, 3] = box[:, 3] * shape[0] / img.shape[0]
 
-            dx = place_x[i]
-            dy = place_y[i]
-            new_image[dy:dy + nh, dx:dx + nw, :] = img
-            box[:, [0, 2]] = box[:, [0, 2]] + dx
-            box[:, [1, 3]] = box[:, [1, 3]] + dy
+            img = cv.resize(img, shape[::-1], interpolation=cv.INTER_CUBIC)
+
+            img, box = Augment.flip(img, box, flip_code=Augment.set_random(2) - 1)
+
             if i == 0:
-                fx = lambda x: x if x < int(iw * offset_x) else int(iw * offset_x)
-                fy = lambda x: x if x < int(ih * offset_y) else int(ih * offset_y)
-                box[:, 2] = np.array(list(map(fx, box[:, 2])))
-                box[:, 3] = np.array(list(map(fy, box[:, 3])))
+                bg_img[:y0, :x0, :] = img
             elif i == 1:
-                fx = lambda x: x if x < int(iw * offset_x) else int(iw * offset_x)
-                box[:, 2] = np.array(list(map(fx, box[:, 2])))
+                bg_img[:y0, x0:, :] = img
+                box[:, 0] += x0
+                box[:, 2] += x0
             elif i == 2:
-                fy = lambda x: x if x < int(ih * offset_y) else int(ih * offset_y)
-                box[:, 3] = np.array(list(map(fy, box[:, 3])))
-            box_w = (box[:, 2] - box[:, 0]) > iw * 0.08
-            box_h = (box[:, 3] - box[:, 1]) > ih * 0.08
-            box = box[box_w & box_h]
-            new_boxes.extend(box)
-        new_image = new_image.astype(np.uint8)
-        return new_image, new_boxes
+                bg_img[y0:, :x0, :] = img
+                box[:, 1] += y0
+                box[:, 3] += y0
+            else:
+                bg_img[y0:, x0:, :] = img
+                box[:, 0] += x0
+                box[:, 1] += y0
+                box[:, 2] += x0
+                box[:, 3] += y0
+            new_boxes.append(box)
+        new_boxes = np.vstack(new_boxes)
+        return np.asarray(bg_img, dtype=np.uint8), new_boxes

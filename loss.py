@@ -64,7 +64,7 @@ def box_diou(b1, b2):
     return diou
 
 
-def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5):
+def yolo4_loss(args):
     '''Return yolo4_loss tensor
 
     Parameters
@@ -80,11 +80,12 @@ def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5):
     loss: tensor, shape=(1,)
 
     '''
-    total_location_loss = 0
-    total_confidence_loss = 0
-    total_class_loss = 0
+    # total_location_loss = 0
+    # total_confidence_loss = 0
+    # total_class_loss = 0
     loss = 0
 
+    anchors, num_classes, ignore_thresh = config.anchors, config.num_classes, config.ignore_thresh
 
     y_pred_base, y_true = args[:3], args[3:]
     # 3
@@ -113,9 +114,9 @@ def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5):
         pred_box = K.concatenate([pred_xy, pred_wh])
 
         # Darknet raw box to calculate loss.
-        raw_true_xy = y_true[l][..., :2] * grid_shapes[l][::-1] - grid
+        # raw_true_xy = y_true[l][..., :2] * grid_shapes[l][::-1] - grid
         raw_true_wh = K.log(y_true[l][..., 2:4] / (anchors[config.anchor_mask[l]] * input_shape[::-1] + K.epsilon()))
-        raw_true_wh = K.switch(object_mask, raw_true_wh, K.zeros_like(raw_true_wh))  # avoid log(0)=-inf
+        # raw_true_wh = K.switch(object_mask, raw_true_wh, K.zeros_like(raw_true_wh))  # avoid log(0)=-inf
         box_loss_scale = 2 - y_true[l][..., 2:3] * y_true[l][..., 3:4]
 
         # Find ignore mask, iterate over each of batch.
@@ -153,9 +154,9 @@ def yolo4_loss(args, anchors, num_classes, ignore_thresh=.5):
         confidence_loss = K.sum(confidence_loss) / batch_tensor
         class_loss = K.sum(class_loss) / batch_tensor
         loss += location_loss + confidence_loss + class_loss
-        total_location_loss += location_loss
-        total_confidence_loss += confidence_loss
-        total_class_loss += class_loss
+        # total_location_loss += location_loss
+        # total_confidence_loss += confidence_loss
+        # total_class_loss += class_loss
 
     # Fit for tf 2.0.0 loss shape
     loss = K.expand_dims(loss, axis=-1)

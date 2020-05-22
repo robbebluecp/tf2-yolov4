@@ -35,14 +35,7 @@ h, w = config.image_input_shape
 y_true = [keras.layers.Input(shape=(h // config.scale_size[l], w // config.scale_size[l], config.num_anchors, config.num_classes + 5)) for l
           in range(3)]
 
-model_loss = keras.layers.Lambda(function=loss.yolo4_loss,
-                                 output_shape=(1,),
-                                 name='yolo_loss',
-                                 arguments={
-                                     'anchors': config.anchors,
-                                     'num_classes': config.num_classes,
-                                     'ignore_thresh': config.ignore_thresh,
-                                 })([*model_yolo.output, *y_true])
+model_loss = keras.layers.Lambda(function=loss.yolo4_loss, output_shape=(1,), name='yolo_loss')([*model_yolo.output, *y_true])
 
 tensorboard = keras.callbacks.TensorBoard()
 checkpoint = keras.callbacks.ModelCheckpoint(filepath='model_train/ep{epoch:03d}-loss{loss:.3f}-valloss{val_loss:.3f}.h5',
@@ -74,7 +67,7 @@ model.fit(g_train,
           steps_per_epoch=len(label_lines) // config.batch_size,
           validation_steps=int(len(label_lines) * config.validation_split * 0.2),
           epochs=config.epochs,
-          callbacks=[tensorboard, checkpoint, reduce_lr, early_stopping]
+          callbacks=[tensorboard, checkpoint, reduce_lr]
           )
 
-model_yolo.save('model_train/model_yolo.h5')
+model_yolo.save_weights('model_train/model_train_final.weights')
