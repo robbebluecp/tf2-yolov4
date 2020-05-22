@@ -1,7 +1,7 @@
 import prepare
 
 font_path = 'font_data/FiraMono-Medium.otf'
-classes_path = 'model_data/coco_classes.txt'
+classes_path = 'model_data/voc_classes.txt'
 anchors_path = 'model_data/yolo4_anchors.txt'
 classes_names = prepare.PrepareConfig().get_classes(classes_path)
 anchors = prepare.PrepareConfig().get_anchors(anchors_path)
@@ -26,9 +26,9 @@ ignore_thresh = 0.5
 
 validation_split = 0.1
 batch_size = 8
-epochs = 10000
+epochs = 1000
 
 score = 0.5
 iou = 0.5
 
-label_path = 'model_data/labels.txt'
+label_path = '/opt/voc2007/labels.txt'
