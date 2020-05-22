@@ -19,3 +19,5 @@ while 1:
     cv.imshow('', new_image)
     cv.waitKey()
     cv.destroyAllWindows()
+
+exit()

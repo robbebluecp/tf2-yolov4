@@ -140,4 +140,4 @@ model_data/labels.txt
 *.weights
 >>>>>>> 4cde4935308d6707e394bf3dbaca6c44ab5db5e9
 config.py
-test*.py
+
