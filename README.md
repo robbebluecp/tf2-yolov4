@@ -49,10 +49,15 @@ git clone https://github.com/robbebluecp/tf2-yolov4.git
  * download voc2007 data from [voc2007.zip](https://github.com/robbebluecp/tf2-yolov4/releases/download/1.0.0/voc2007.zip)
  * unzip it into /opt (of course some other paths are also ok..., if you choose other paths, you have to change 【label_path = '/opt/voc2007/labels.txt'】 into 【label_path = your_path/label.txt】 in config.py)
  * make sure  【classes_path = 'model_data/voc_classes.txt'】 in config.py
- * then ,run python3 train.py
+ * then, run python3 train.py
  
  #RESULT
- 
+ As you can see in [loss.png](https://github.com/robbebluecp/tf2-yolov4/blob/master/model_train/loss.png) 
+ and [predict.png](https://github.com/robbebluecp/tf2-yolov4/blob/master/model_train/predict.png), I've trained voc2007 for about 160 epochs, loss line seems much healthier but val_loss looks like a little
+ unstable. But I think with more epochs or loading model with pre-trained weights will be better and better. So, you can just try with pre-trained weights while loading model if you have a nice machine to 
+ develop. Whatever, there are a lot of difference between c release and python release, if you want to improve more, just step to  
+ [http://github.com/AlexeyAB/darknet#how-to-train-to-detect-your-custom-objects](http://github.com/AlexeyAB/darknet#how-to-train-to-detect-your-custom-objects]) for 
+ a more learning.  
  
  
  #RELATIONS
