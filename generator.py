@@ -25,21 +25,21 @@ def preprocess_true_boxes(true_boxes: np.ndarray,
 
     true_boxes = np.array(true_boxes, dtype='float32')
     input_shape = np.array(input_shape, dtype='int32')
-    # 中心点, (N, 20, 2)
+
     boxes_xy = (true_boxes[..., 0:2] + true_boxes[..., 2:4]) // 2
-    # 宽高,   (N, 20, 2)
+
     boxes_wh = true_boxes[..., 2:4] - true_boxes[..., 0:2]
     # 剔除0项
     valid_mask = boxes_wh[..., 0] > 0
     # 放缩
-    # 从这里开始，对角坐标值被个替换成中心坐标值 + wh, 归一
+
     true_boxes[..., 0:2] = boxes_xy / input_shape[::-1]
     true_boxes[..., 2:4] = boxes_wh / input_shape[::-1]
 
     batch_size = true_boxes.shape[0]
-    # [13, 26, 52]
+
     grid_shapes = [input_shape // config.scale_size[l] for l in range(num_layers)]
-    # [(N, 13, 13, 3, 15), (N, 26, 26, 3, 15), (N, 52, 52, 3, 15)]
+
     y_true = [np.zeros((batch_size, grid_shapes[l][0], grid_shapes[l][1], len(config.anchor_mask[l]), 5 + num_classes),
                        dtype='float32') for l in range(num_layers)]
 
@@ -58,17 +58,13 @@ def preprocess_true_boxes(true_boxes: np.ndarray,
         for t, n in enumerate(best_anchor_indexes):
             for l in range(num_layers):
                 if n in config.anchor_mask[l]:
-                    # 中点y
                     i = np.floor(true_boxes[N, t, 0] * grid_shapes[l][1]).astype('int32')
-                    # 中点x
                     j = np.floor(true_boxes[N, t, 1] * grid_shapes[l][0]).astype('int32')
-                    #
                     k = config.anchor_mask[l].index(n)
                     c = true_boxes[N, t, 4].astype('int32')
                     y_true[l][N, j, i, k, 0:4] = true_boxes[N, t, 0:4]
                     y_true[l][N, j, i, k, 4] = 1
                     y_true[l][N, j, i, k, 5 + c] = 1
-    # [(N, 13, 13, 3, 15), (N, 26, 26, 3, 15), (N, 52, 52, 3, 15)]
     return y_true
 
 
@@ -111,9 +107,6 @@ def data_generator(label_lines, batch_size, input_shape, anchors, num_classes):
             i = (i + 1) % n
         image_data = np.array(image_data)
         box_data = np.array(box_data)
-
-        # (N, 20, 5), (None, None), (9, 2), 10
-        # return [N, 13, 13, 3, 15]
         y_true = preprocess_true_boxes(box_data, input_shape, anchors, num_classes)
         yield [image_data, *y_true], np.zeros(batch_size)
 

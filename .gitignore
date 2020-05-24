@@ -131,7 +131,8 @@ logs/
 *.iml
 *.xml
 <<<<<<< HEAD
-model_train/
+model_train/*.h5
+model_train/*.weights
 test_lib/
 =======
 *.lock
