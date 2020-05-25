@@ -29,7 +29,10 @@ class Mish(keras.layers.Layer):
 
 
 class YOLO:
-    def __init__(self, input_shape=(None, None), pre_train=''):
+    def __init__(self,
+                 input_shape=(None, None),
+                 pre_train: str = None,
+                 freeze_num: int = 2):
         self.num_classes = config.num_classes
         self.num_anchors = config.num_anchors
         self.inputs = keras.layers.Input((*input_shape, 3))
@@ -44,7 +47,7 @@ class YOLO:
         if pre_train:
             print('loading pre-weights file ...')
             self.yolo.load_weights(pre_train, by_name=True, skip_mismatch=True)
-            num = (250, len(self.yolo.layers) - 3)[2 - 1]
+            num = (250, len(self.yolo.layers) - 3)[freeze_num - 1]
             for i in range(num):
                 self.yolo.layers[i].trainable = False
             print('loading finished')
@@ -242,6 +245,7 @@ class YOLO:
     def __call__(self, *args, **kwargs):
         return self.yolo
 
+
 def compose(*funcs):
     """Compose arbitrarily many functions, evaluated left to right.
 
@@ -252,5 +256,3 @@ def compose(*funcs):
         return reduce(lambda f, g: lambda *a, **kw: g(f(*a, **kw)), funcs)
     else:
         raise ValueError('Composition of empty sequence not supported.')
-
-

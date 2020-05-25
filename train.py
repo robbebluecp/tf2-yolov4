@@ -23,7 +23,7 @@ class_mapping = dict(enumerate(config.classes_names))
 class_mapping = {class_mapping[key]: key for key in class_mapping}
 
 
-model_yolo = models.YOLO()()
+model_yolo = models.YOLO(pre_train=None)()
 
 f = open(config.label_path)
 label_lines = f.readlines()
