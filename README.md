@@ -4,7 +4,7 @@ more and more functions has been optimized better. And,  keras has been embedded
 supported by official except fixing bugs. Also for more readable, I've made a lot of changes while transferring, such as 
 layer aggregation, image augment and some other changes from tf1 to tf2.   
   
-【Now, IT IS ONLY SUPPORT TF2+】 
+【Now, IT ONLY SUPPORTS TF2+】 
 
 
 # INSTALLATION
