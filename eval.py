@@ -35,17 +35,16 @@ def yolo_correct_boxes(box_xy, box_wh, input_shape, image_shape):
 
     # Scale boxes back to original image shape.
     boxes *= np.concatenate([image_shape, image_shape], axis=-1)
-    # (N, 13, 13, 3, 4)
     return boxes
 
 
 def yolo_boxes_and_scores(feats, anchors, num_classes, input_shape, image_shape):
     '''Process Conv layer output'''
-    # (N, 13, 13, 3, 2), (N, 13, 13, 3, 2)， (N, 13, 13, 3, 1)， (N, 13, 13, 3, 10)
+
 
     box_xy, box_wh, box_confidence, box_class_probs = YOLO.yolo_head(feats, anchors, num_classes, input_shape)
 
-    # (N, 13, 13, 3, 4)
+
     boxes = yolo_correct_boxes(box_xy, box_wh, input_shape, image_shape)
     # (x, 4)
     boxes = np.reshape(boxes, [-1, 4])
@@ -68,9 +67,9 @@ def yolo_eval(yolo_outputs,
     TODO: optimization below steps in the future
     predict -> correct -> nms -> output
 
-    :param yolo_outputs:    (N, 13, 13, 255), ...
+    :param yolo_outputs:
     :param anchors:         (9, 2)
-    :param num_classes:     (15, )
+    :param num_classes:
     :param image_shape:     (None, None)
     :param max_boxes:
     :param score_threshold:
@@ -80,7 +79,7 @@ def yolo_eval(yolo_outputs,
     image_shape = np.array(image_shape)
     num_layers = len(yolo_outputs)
     anchor_mask = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
-    # (416, 416)
+
     input_shape = np.array(yolo_outputs[0].shape[1:3]) * 32
     boxes = []
     box_scores = []

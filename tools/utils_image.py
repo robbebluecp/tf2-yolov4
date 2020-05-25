@@ -1,7 +1,3 @@
-"""
-图像处理模块
-"""
-
 from PIL import Image, ImageDraw, ImageFont
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
 import cv2 as cv

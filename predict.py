@@ -15,7 +15,7 @@ if devices:
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-m', '--model', type=str, help='input h5 model path', default='model_train/yolov4.h5')
-parser.add_argument('-i', '--image', type=str, help='input image file path', default='data/test2.png')
+parser.add_argument('-i', '--image', type=str, help='input image file path', default='data/000030.jpg')
 
 
 args = parser.parse_args()
@@ -33,7 +33,7 @@ class_mapping = dict(enumerate(class_names))
 colors = utils_image.get_random_colors(len(class_names))
 class_mapping = {class_mapping[key]: key for key in class_mapping}
 model = models.YOLO()()
-model.load_weights('model_train/yolov4.h5')
+model.load_weights('model_train/ep155-loss13.141-valloss13.487.h5')
 
 
 
@@ -42,12 +42,10 @@ image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
 
 
 new_image = utils_image.resize_image(image, config.image_input_shape)
-# new_image = cv.resize(image, (608, 608), interpolation=cv.INTER_CUBIC)
 
 new_image = np.array(new_image, dtype='float32')
 new_image /= 255.
-new_image = np.expand_dims(new_image, 0)  # Add batch dimension.
-# return ([N, 19, 19, 75], [N, 38, 38, 75], [N, 76, 76, 75])
+new_image = np.expand_dims(new_image, 0)
 feats = model.predict(new_image)
 
 

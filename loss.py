@@ -6,7 +6,7 @@ from tools import utils
 from models import YOLO
 
 
-def box_diou(b1, b2):
+def box_ciou(b1, b2):
     """
     Calculate DIoU loss on anchor boxes
     Reference Paper:
@@ -53,15 +53,14 @@ def box_diou(b1, b2):
     # get enclosed diagonal distance
     enclose_diagonal = K.sum(K.square(enclose_wh), axis=-1)
     # calculate DIoU, add epsilon in denominator to avoid dividing by 0
-    diou = iou - 1.0 * (center_distance) / (enclose_diagonal + K.epsilon())
+    diou = 1 - iou + center_distance / (enclose_diagonal + K.epsilon())
 
-    # calculate param v and alpha to extend to CIoU
-    # v = 4*K.square(tf.math.atan2(b1_wh[..., 0], b1_wh[..., 1]) - tf.math.atan2(b2_wh[..., 0], b2_wh[..., 1])) / (math.pi * math.pi)
-    # alpha = v / (1.0 - iou + v)
-    # diou = diou - alpha*v
+    v = 4*K.square(tf.math.atan2(b1_wh[..., 0], b1_wh[..., 1]) - tf.math.atan2(b2_wh[..., 0], b2_wh[..., 1])) / (math.pi * math.pi)
+    alpha = v / (1.0 - iou + v)
+    ciou = diou + alpha*v
 
-    diou = K.expand_dims(diou, -1)
-    return diou
+    ciou = K.expand_dims(ciou, -1)
+    return ciou
 
 
 def yolo4_loss(args):
@@ -92,12 +91,11 @@ def yolo4_loss(args):
     num_layers = len(anchors) // 3  # default setting
     # (9, 2)
     anchors = np.asarray(anchors, dtype=int)
-    # (416, 416)
+
     input_shape = K.cast(K.shape(y_pred_base[0])[1:3] * 32, K.dtype(y_true[0]))
-    # [(13, 13), (26, 26), (52, 52)]
     grid_shapes = [K.cast(K.shape(y_pred_base[l])[1:3], K.floatx()) for l in range(num_layers)]
     # N
-    batch = K.shape(y_pred_base[0])[0]  # batch size, tensor
+    batch = K.shape(y_pred_base[0])[0]
 
     batch_tensor = K.cast(batch, K.floatx())
 
@@ -113,13 +111,11 @@ def yolo4_loss(args):
                                                      calc_loss=True)
         pred_box = K.concatenate([pred_xy, pred_wh])
 
-        # Darknet raw box to calculate loss.
         # raw_true_xy = y_true[l][..., :2] * grid_shapes[l][::-1] - grid
         raw_true_wh = K.log(y_true[l][..., 2:4] / (anchors[config.anchor_mask[l]] * input_shape[::-1] + K.epsilon()))
         # raw_true_wh = K.switch(object_mask, raw_true_wh, K.zeros_like(raw_true_wh))  # avoid log(0)=-inf
         box_loss_scale = 2 - y_true[l][..., 2:3] * y_true[l][..., 3:4]
 
-        # Find ignore mask, iterate over each of batch.
         ignore_mask = tf.TensorArray(K.dtype(y_true[0]), size=1, dynamic_size=True)
         object_mask_bool = K.cast(object_mask, 'bool')
 
@@ -130,7 +126,6 @@ def yolo4_loss(args):
             ignore_mask = ignore_mask.write(b, K.cast(best_iou < ignore_thresh, K.dtype(true_box)))
             return b + 1, ignore_mask
 
-        # _, ignore_mask = tf.while_loop(lambda b, *args: b < m, loop_body, [0, ignore_mask])
         _, ignore_mask = tf.while_loop(lambda b, *args: b < batch, loop_body, [0, ignore_mask])
 
         ignore_mask = ignore_mask.stack()
@@ -143,12 +138,11 @@ def yolo4_loss(args):
         class_loss = object_mask * K.binary_crossentropy(true_class_probs, raw_pred[..., 5:], from_logits=True)
 
 
-        # Calculate DIoU loss as location loss
         raw_true_box = y_true[l][..., 0:4]
-        diou = box_diou(pred_box, raw_true_box)
-        diou_loss = object_mask * box_loss_scale * (1 - diou)
-        diou_loss = K.sum(diou_loss) / batch_tensor
-        location_loss = diou_loss
+        ciou = box_ciou(pred_box, raw_true_box)
+        ciou_loss = object_mask * box_loss_scale * ciou
+        ciou_loss = K.sum(ciou_loss) / batch_tensor
+        location_loss = ciou_loss
 
 
         confidence_loss = K.sum(confidence_loss) / batch_tensor
@@ -158,7 +152,6 @@ def yolo4_loss(args):
         # total_confidence_loss += confidence_loss
         # total_class_loss += class_loss
 
-    # Fit for tf 2.0.0 loss shape
     loss = K.expand_dims(loss, axis=-1)
 
-    return loss  # , total_location_loss, total_confidence_loss, total_class_loss
+    return loss
