@@ -7,10 +7,10 @@ layer aggregation, image augment and some other changes from tf1 to tf2.
 【Now, IT IS ONLY SUPPORT TF2+】 
 
 
-# Installation  
+# INSTALLATION
 git clone https://github.com/robbebluecp/tf2-yolov4.git
 
-# Files  
+# FILES  
  * data :-> to put some temporary files like jpgs or pngs and so on  
  * font_data :-> a font file for text on pic (will be removed)
  * model_data :-> core config files mainly including class file and anchors file
