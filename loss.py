@@ -6,7 +6,7 @@ from tools import utils
 from models import YOLO
 
 
-def box_diou(b1, b2):
+def box_ciou(b1, b2):
     """
     Calculate DIoU loss on anchor boxes
     Reference Paper:
@@ -53,15 +53,14 @@ def box_diou(b1, b2):
     # get enclosed diagonal distance
     enclose_diagonal = K.sum(K.square(enclose_wh), axis=-1)
     # calculate DIoU, add epsilon in denominator to avoid dividing by 0
-    diou = iou - 1.0 * (center_distance) / (enclose_diagonal + K.epsilon())
+    diou = 1 - iou + center_distance / (enclose_diagonal + K.epsilon())
 
-    # calculate param v and alpha to extend to CIoU
-    # v = 4*K.square(tf.math.atan2(b1_wh[..., 0], b1_wh[..., 1]) - tf.math.atan2(b2_wh[..., 0], b2_wh[..., 1])) / (math.pi * math.pi)
-    # alpha = v / (1.0 - iou + v)
-    # diou = diou - alpha*v
+    v = 4*K.square(tf.math.atan2(b1_wh[..., 0], b1_wh[..., 1]) - tf.math.atan2(b2_wh[..., 0], b2_wh[..., 1])) / (math.pi * math.pi)
+    alpha = v / (1.0 - iou + v)
+    ciou = diou + alpha*v
 
-    diou = K.expand_dims(diou, -1)
-    return diou
+    ciou = K.expand_dims(ciou, -1)
+    return ciou
 
 
 def yolo4_loss(args):
@@ -140,10 +139,10 @@ def yolo4_loss(args):
 
 
         raw_true_box = y_true[l][..., 0:4]
-        diou = box_diou(pred_box, raw_true_box)
-        diou_loss = object_mask * box_loss_scale * (1 - diou)
-        diou_loss = K.sum(diou_loss) / batch_tensor
-        location_loss = diou_loss
+        ciou = box_ciou(pred_box, raw_true_box)
+        ciou_loss = object_mask * box_loss_scale * ciou
+        ciou_loss = K.sum(ciou_loss) / batch_tensor
+        location_loss = ciou_loss
 
 
         confidence_loss = K.sum(confidence_loss) / batch_tensor
