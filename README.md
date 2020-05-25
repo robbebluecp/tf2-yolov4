@@ -1,7 +1,7 @@
 # INTRODUCTION  
 This edition of yolov4 frame has been smoothly transferred from tf1+ and keras version. With tf2+ used extensively,
-more and more functions has been optimized better. And,  keras has been embedded into tensorflow at the same time and not
-supported by official except fixing bugs. Also for more readable, I've made a lot of changes while transferring, such as 
+many older functions have been optimized even won't be used any more. Keras has been embedded into tensorflow and won't be
+supported by official, except fixing bugs. For more readable, I've made a lot of changes while transferring, such as 
 layer aggregation, image augment and some other changes from tf1 to tf2.   
   
 【Now, IT ONLY SUPPORTS TF2+】 
