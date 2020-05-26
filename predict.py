@@ -33,7 +33,7 @@ class_mapping = dict(enumerate(class_names))
 colors = utils_image.get_random_colors(len(class_names))
 class_mapping = {class_mapping[key]: key for key in class_mapping}
 model = models.YOLO()()
-model.load_weights('model_train/ep155-loss13.141-valloss13.487.h5')
+model.load_weights('model_train/model_train_final.weights')
 
 
 

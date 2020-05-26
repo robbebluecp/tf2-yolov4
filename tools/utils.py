@@ -142,14 +142,14 @@ def tf_layer_name_compat(layer_v1_name):
     layers' name are changed a lot from tf1 to tf2,
     and name_mapping will be filled when needed.
     """
-    name_mapping = {
-        'batchnormalization': 'batch_normalization',
-        'leakyrelu': 'leaky_re_lu',
-        'upsampling': 'up_sampling',
-        'zeropadding': 'zero_padding',
-        'maxpooling': 'max_pooling',
-
-    }
+    # name_mapping = {
+    #     'batchnormalization': 'batch_normalization',
+    #     'leakyrelu': 'leaky_re_lu',
+    #     'upsampling': 'up_sampling',
+    #     'zeropadding': 'zero_padding',
+    #     'maxpooling': 'max_pooling',
+    #
+    # }
     tmp = layer_v1_name.split('_')
     num = tmp[-1]
     if layer_v1_name.startswith('input'):
@@ -157,23 +157,16 @@ def tf_layer_name_compat(layer_v1_name):
     else:
         try:
             num = int(num)
-            tmp_layer_name = ''.join(tmp[:-1]) + '_' + str(num + 1)
+            tmp_layer_name = '_'.join(tmp[:-1]) + '_' + str(num + 1)
         except:
             tmp_layer_name = layer_v1_name + '_1'
 
-    for key in name_mapping:
-        tmp_layer_name = tmp_layer_name.replace(key, name_mapping[key])
+    # for key in name_mapping:
+    #     tmp_layer_name = tmp_layer_name.replace(key, name_mapping[key])
     layer_v2_name = tmp_layer_name
     return layer_v2_name
 
 
 if __name__ == '__main__':
-    np.random.seed(1)
-    boxes = np.random.random_integers(0, 10, (20, 2))
-    anchors = np.random.random_integers(0, 10, (9, 2))
-    c = iou_area_index(boxes, anchors)
-    print(c)
-    boxes = np.random.random_integers(0, 10, (10, 10, 3, 2))
-    anchors = np.random.random_integers(0, 10, (4, 2))
-    c = iou_area_index(boxes, anchors)
-    print(c.shape)
+
+    print(tf_layer_name_compat('batch_normalization'))
